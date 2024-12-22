@@ -179,14 +179,14 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model_with_head.to(device)
 
-    epochs = 5
+    epochs = 100
     for epoch in range(epochs):
-        print("We are currently on epoch ", epoch)
+        # print("We are currently on epoch ", epoch)
         model_with_head.train()
         total_loss = 0
         for batch_id,batch in enumerate(train_loader):
-            if(batch_id % 100 == 0):
-                print(f"Batch {batch_id}, {len(train_loader)}")
+            # if(batch_id % 100 == 0):
+            #     print(f"Batch {batch_id}, {len(train_loader)}")
             optimizer.zero_grad()
 
             input_ids = batch["input_ids"].to(device)
@@ -202,7 +202,7 @@ def main():
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
-        print("We got out!!! \o/")
+        # print("We got out!!! \o/")
         avg_loss = total_loss / len(train_loader)
         print(f"Epoch [{epoch+1}/{epochs}] - Train Loss: {avg_loss:.4f}")
 
@@ -210,6 +210,7 @@ def main():
         model_with_head.eval()
         correct = 0
         total = 0
+        val_loss = 0;
         with torch.no_grad():
             for batch in val_loader:
                 input_ids = batch["input_ids"].to(device)
@@ -226,8 +227,10 @@ def main():
                 correct += (preds == labels).sum().item()
                 total += labels.size(0)
 
+                val_loss += loss
         val_acc = correct / total
         print(f"Validation Accuracy: {val_acc:.4f}")
+        print(f"Validation loss: {val_loss:.4f}")
 
     print("Training complete!")
 
