@@ -110,6 +110,9 @@ def main():
     # -------------------------------------------------
     dataset = load_dataset("glue", "sst2")
 
+    # check the top of the dataset
+    print(dataset)
+
     # The Roberta tokenizer
     tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
 
@@ -127,8 +130,8 @@ def main():
     train_dataset = dataset["train"]
     val_dataset = dataset["validation"]
 
-    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=8)
+    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=16)
 
     # -------------------------------------------------
     # E) Classification head (simple)
@@ -176,11 +179,14 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model_with_head.to(device)
 
-    epochs = 2
+    epochs = 5
     for epoch in range(epochs):
+        print("We are currently on epoch ", epoch)
         model_with_head.train()
         total_loss = 0
-        for batch in train_loader:
+        for batch_id,batch in enumerate(train_loader):
+            if(batch_id % 100 == 0):
+                print(f"Batch {batch_id}, {len(train_loader)}")
             optimizer.zero_grad()
 
             input_ids = batch["input_ids"].to(device)
@@ -196,7 +202,7 @@ def main():
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
-
+        print("We got out!!! \o/")
         avg_loss = total_loss / len(train_loader)
         print(f"Epoch [{epoch+1}/{epochs}] - Train Loss: {avg_loss:.4f}")
 
