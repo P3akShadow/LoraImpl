@@ -172,7 +172,7 @@ class FinetuneRoberta(RobertaSelfAttention):
         # They're already initialized by the parent class
 
         # Initialize LoRA matrices for query
-        std_dev = 1 / torch.sqrt(torch.tensor(rank, dtype=torch.float32))
+        std_dev = 1 / torch.sqrt(torch.tensor(dimension, dtype=torch.float32))
         self.finetune_query = nn.Parameter(torch.randn(dimension, dimension) * std_dev)
 
         # Initialize LoRA matrices for value
