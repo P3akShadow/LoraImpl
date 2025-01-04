@@ -173,10 +173,10 @@ class FinetuneRoberta(RobertaSelfAttention):
 
         # Initialize LoRA matrices for query
         std_dev = 1 / torch.sqrt(torch.tensor(dimension, dtype=torch.float32))
-        self.finetune_query = nn.Parameter(torch.randn(dimension, dimension) * std_dev)
+        self.ft_query = nn.Parameter(torch.randn(dimension, dimension) * std_dev)
 
         # Initialize LoRA matrices for value
-        self.finetune_value = nn.Parameter(torch.randn(dimension, dimension) * std_dev)
+        self.ft_value = nn.Parameter(torch.randn(dimension, dimension) * std_dev)
 
         # Freeze the original parameters
         self.query.weight.requires_grad_(False)
@@ -188,14 +188,14 @@ class FinetuneRoberta(RobertaSelfAttention):
         # Original query transformation
         base_output = self.query(x)
         # LoRA update
-        finetune_output = self.alpha * (x @ self.finetune_query)
+        finetune_output = self.alpha * (x @ self.ft_query)
         return base_output + finetune_output
 
     def finetune_value(self, x):
         # Original value transformation
         base_output = self.value(x)
         # LoRA update
-        finetune_output = self.alpha * (x @ self.finetune_value)
+        finetune_output = self.alpha * (x @ self.ft_value)
         return base_output + finetune_output
 
     def forward(
