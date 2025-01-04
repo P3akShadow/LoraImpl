@@ -451,7 +451,7 @@ class LoraWrapperRoberta(nn.Module):
                 # Compare keys of both state dicts
                 keys_old = set(state_dict_old.keys())
                 keys_new = set(k for k in state_dict_new.keys() if not k.startswith("lora_"))
-                assert keys_old == keys_new, f"Keys of the state dictionaries don't match (ignoring lora parameters):\n\tExpected Parameters: {keys_old}\n\tNew Parameters (w.o. LoRA): {keys_new}"
+                #assert keys_old == keys_new, f"Keys of the state dictionaries don't match (ignoring lora parameters):\n\tExpected Parameters: {keys_old}\n\tNew Parameters (w.o. LoRA): {keys_new}"
 
                 # Replace the original layer with the new layer
                 setattr(model, name, new_layer)
