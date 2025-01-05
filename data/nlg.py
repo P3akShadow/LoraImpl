@@ -1,4 +1,6 @@
 from torch.utils.data import Dataset
+from datasets import load_dataset
+from transformers import GPT2TokenizerFast
 
 class NLGDataset(Dataset):
     """
