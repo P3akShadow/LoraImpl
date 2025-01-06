@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "ws24-dlnlp-project"
+name = "loraimpl"
 version = "0.1.0"
 description = ""
 authors = ["Maximilian Süss <maximilian.emanuel.suess@gmail.com>"]
 readme = "README.md"
-package-mode = false
+# package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11.10"
@@ -14,6 +14,7 @@ transformers = "^4.47.1"
 scikit-learn = "^1.6.0"
 tqdm = "^4.67.1"
 evaluate = "^0.4.3"
+rouge-score = "^0.1.2"
 
 
 [build-system]

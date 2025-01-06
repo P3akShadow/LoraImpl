@@ -2,9 +2,9 @@ import torch
 from tqdm import tqdm
 from transformers import get_scheduler
 
-from data.nlg import NLGDataset
-from models.lora_gpt2 import LoraWrapperGPT2NLG, verify_parameters, verify_gradients
-from utils.helper import evaluate_nlg
+from loraimpl.data.nlg import NLGDataset
+from loraimpl.models.lora_gpt2 import LoraWrapperGPT2NLG, verify_parameters, verify_gradients
+from loraimpl.utils.helper import evaluate_nlg
 
 
 def main():
