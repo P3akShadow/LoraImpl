@@ -3,7 +3,7 @@ from transformers import RobertaTokenizer
 
 from data.glue import GLUEDataset
 from models.lora_roberta import LoraWrapperRoberta
-from utils.helper import train_epoch, evaluate
+from utils.helper import train_epoch, evaluate_glue
 
 
 def main():
@@ -63,7 +63,7 @@ def main():
             print(f"{k}: {v:.4f}")
 
         # Evaluation
-        eval_metrics = evaluate(model, eval_loader, criterion, device, task_name)
+        eval_metrics = evaluate_glue(model, eval_loader, criterion, device, task_name)
         print("\nValidation metrics:")
         for k, v in eval_metrics.items():
             print(f"{k}: {v:.4f}")

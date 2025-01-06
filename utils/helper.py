@@ -3,6 +3,7 @@ import numpy as np
 import scipy
 from tqdm import tqdm
 from sklearn.metrics import matthews_corrcoef, f1_score, accuracy_score
+import evaluate
 
 
 def compute_metrics(task_name, preds, labels):
@@ -56,7 +57,7 @@ def train_epoch(model, train_loader, optimizer, criterion, device, task_name):
     return metrics
 
 
-def evaluate(model, eval_loader, criterion, device, task_name):
+def evaluate_glue(model, eval_loader, criterion, device, task_name):
     model.eval()
     total_loss = 0
     all_preds = []
