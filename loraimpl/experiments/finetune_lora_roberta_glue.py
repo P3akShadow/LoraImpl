@@ -1,5 +1,6 @@
 import torch
 from transformers import RobertaTokenizer
+import wandb
 
 from loraimpl.data.glue import GLUEDataset
 from loraimpl.models.lora_roberta import LoraWrapperRoberta
@@ -45,7 +46,18 @@ def main():
         'eps': 1e-8
     }
 
-    run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config)
+    # Log configuration to Weights & Biases and run experiment
+    config = {
+        'num_epochs': num_epochs,
+        'model_config': model_config,
+        'train_dataset_config': train_dataset_config,
+        'val_dataset_config': val_dataset_config,
+        'train_loader_config': train_loader_config,
+        'val_loader_config': val_loader_config,
+        'optimizer_config': optimizer_config
+    }
+    wandb.init(project="lora", config=config)
+    run_experiment(**config)
 
 
 def run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config):
@@ -102,6 +114,14 @@ def run_experiment(model_config, train_loader_config, val_loader_config, train_d
         if current_metric > best_metric:
             best_metric = current_metric
             model.save_lora_state_dict(f'lora_weights_{task_name}_best.pt')
+
+        # Log metrics to Weights & Biases
+        wandb.log({
+            'epoch': epoch + 1,
+            'loss': train_metrics['loss'],
+            'validation_metrics': eval_metrics,
+        })
+
 
     print("\nTraining completed!")
     print(f"Best validation metric: {best_metric:.4f}")

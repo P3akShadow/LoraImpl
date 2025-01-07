@@ -45,7 +45,18 @@ def main():
         'eps': 1e-8
     }
 
-    run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config)
+    # Log configuration to Weights & Biases and run experiment
+    config = {
+        'num_epochs': num_epochs,
+        'model_config': model_config,
+        'train_dataset_config': train_dataset_config,
+        'val_dataset_config': val_dataset_config,
+        'train_loader_config': train_loader_config,
+        'val_loader_config': val_loader_config,
+        'optimizer_config': optimizer_config
+    }
+    wandb.init(project="lora", config=config)
+    run_experiment(**config)
 
 def run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -176,6 +187,12 @@ def run_experiment(model_config, train_loader_config, val_loader_config, train_d
             if no_improve >= patience:
                 print("\nEarly stopping triggered!")
                 break
+
+        wandb.log({
+            'epoch': epoch + 1,
+            'loss': avg_loss,
+            'validation_metrics': metrics
+        })
 
     print("\nTraining completed!")
 
