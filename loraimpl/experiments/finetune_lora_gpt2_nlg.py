@@ -107,49 +107,22 @@ def run_experiment(model_config, train_loader_config, val_loader_config, train_d
         total_loss = 0
 
         for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"Epoch {epoch + 1}")):
-            optimizer.zero_grad(set_to_none=True)
 
             input_ids = batch['input_ids'].to(device)
             attention_mask = batch['attention_mask'].to(device)
             labels = batch['labels'].to(device)
 
-            # Verify gradients on first batch of first epoch
-            if epoch == 0 and batch_idx == 0:
-                print(f"\nVerifying gradients on first batch:")
-                model.train()
-                # Verification forward pass
-                with torch.set_grad_enabled(True):
-                    outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
-                    verification_loss = outputs.loss
-
-                    print(f"Loss requires grad: {verification_loss.requires_grad}")
-                    print(f"Loss grad_fn: {verification_loss.grad_fn}")
-
-                    if verification_loss.requires_grad:
-                        verification_loss.backward()
-                        verify_gradients(model, verification_loss)
-                    else:
-                        raise ValueError("Verification loss does not require gradients!")
-
-                optimizer.zero_grad(set_to_none=True)
-
             # Normal training step
             model.train()
-            with torch.set_grad_enabled(True):
-                with torch.cuda.amp.autocast():
-                    outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
-                    loss = outputs.loss
+            outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
+            loss = outputs.loss
 
-                # Check if loss requires gradients
-                if not loss.requires_grad:
-                    raise ValueError("Training loss does not require gradients!")
-
-                scaler.scale(loss).backward()
-                scaler.unscale_(optimizer)
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-                scaler.step(optimizer)
-                scaler.update()
-                scheduler.step()
+            scaler.scale(loss).backward()
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            scaler.step(optimizer)
+            scaler.update()
+            scheduler.step()
 
             total_loss += loss.item()
 
