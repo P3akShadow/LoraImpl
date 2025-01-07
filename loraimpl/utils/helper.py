@@ -165,5 +165,6 @@ def summarize_model(model, dataloader=None, device=None):
         input_ids=example_input['input_ids'],
         attention_mask=example_input['attention_mask'],
         labels=example_input['labels'],
-        device=device
+        device=device,
+        depth=7
     )
