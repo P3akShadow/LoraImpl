@@ -9,6 +9,13 @@ from loraimpl.utils.helper import train_epoch, evaluate_glue
 def main():
     # Configuration
     num_epochs = 3
+    model_config = {
+        'task_type': 'glue',
+        'lora_rank': 8,
+        'train_biases': True,
+        'train_embedding': False,
+        'train_layer_norms': True
+    }
     train_dataset_config = {
         'task_name': 'sst2',
         'split': 'train',
@@ -30,13 +37,6 @@ def main():
         'shuffle': False,
         'num_workers': 4,
         'pin_memory': True
-    }
-    model_config = {
-        'task_type': 'glue',
-        'lora_rank': 8,
-        'train_biases': True,
-        'train_embedding': False,
-        'train_layer_norms': True
     }
     optimizer_config = {
         'lr': 1e-4,

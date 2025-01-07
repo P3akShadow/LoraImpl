@@ -8,6 +8,45 @@ from loraimpl.models.lora_gpt2 import LoraWrapperGPT2NLG, verify_parameters, ver
 from loraimpl.utils.helper import evaluate_nlg
 
 
+def main():
+    # Configuration
+    num_epochs = 10
+    model_config = {
+        'model_id': 'gpt2',
+        'lora_rank': 32,
+        'lora_alpha': 64,
+        'train_biases': False,
+        'train_layer_norms': False
+    }
+    train_dataset_config = {
+        'split': 'train',
+        'max_length': 128
+    }
+    val_dataset_config = {
+        'split': 'validation',
+        'max_length': 128
+    }
+    train_loader_config = {
+        'batch_size': 8,
+        'shuffle': True,
+        'num_workers': 4,
+        'pin_memory': True
+    }
+    val_loader_config = {
+        'batch_size': 8,
+        'shuffle': False,
+        'num_workers': 4,
+        'pin_memory': True
+    }
+    optimizer_config = {
+        'lr': 2e-5,
+        'weight_decay': 0.01,
+        'betas': (0.9, 0.999),
+        'eps': 1e-8
+    }
+
+    run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config)
+
 def run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -153,45 +192,6 @@ def run_experiment(model_config, train_loader_config, val_loader_config, train_d
             print(f"  Final:   {final_stats[key]}")
         else:
             print(f"✓ {key} remained constant: {initial_stats[key]}")
-
-
-def main():
-    model_config = {
-        'model_id': 'gpt2',
-        'lora_rank': 32,
-        'lora_alpha': 64,
-        'train_biases': False,
-        'train_layer_norms': False
-    }
-    train_loader_config = {
-        'batch_size': 8,
-        'shuffle': True,
-        'num_workers': 4,
-        'pin_memory': True
-    }
-    val_loader_config = {
-        'batch_size': 8,
-        'shuffle': False,
-        'num_workers': 4,
-        'pin_memory': True
-    }
-    train_dataset_config = {
-        'split': 'train',
-        'max_length': 128
-    }
-    val_dataset_config = {
-        'split': 'validation',
-        'max_length': 128
-    }
-    optimizer_config = {
-        'lr': 2e-5,
-        'weight_decay': 0.01,
-        'betas': (0.9, 0.999),
-        'eps': 1e-8
-    }
-    num_epochs = 10
-
-    run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config)
 
 
 if __name__ == '__main__':
