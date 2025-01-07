@@ -63,3 +63,10 @@ if __name__ == "__main__":
     print(model_vanilla)
     print(model_lora)
     print(model_lora_custom)
+
+    # TorchInfo Summaries
+    from torchinfo import summary
+    summary(model_vanilla)
+    summary(model_lora)
+    summary(model_lora_custom)
+
