@@ -4,6 +4,7 @@ import scipy
 from tqdm import tqdm
 from sklearn.metrics import matthews_corrcoef, f1_score, accuracy_score
 import evaluate
+import torchinfo
 
 
 def compute_metrics(task_name, preds, labels):
@@ -151,3 +152,12 @@ def evaluate_nlg(model, eval_loader, tokenizer, device):
     )["meteor"]
 
     return results
+
+
+def summarize_model(model, dataloader=None):
+    """Describe the model"""
+    if dataloader is None:
+        torchinfo.summary(model)
+        return
+    example_input = next(iter(dataloader))['input_ids']
+    torchinfo.summary(model, example_input)

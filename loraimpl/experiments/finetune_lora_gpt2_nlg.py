@@ -5,8 +5,8 @@ from transformers import get_scheduler
 import wandb
 
 from loraimpl.data.nlg import NLGDataset
-from loraimpl.models.lora_gpt2 import LoraWrapperGPT2NLG, verify_parameters, verify_gradients
-from loraimpl.utils.helper import evaluate_nlg
+from loraimpl.models.lora_gpt2 import GPT2LMHeadModelLora
+from loraimpl.utils.helper import evaluate_nlg, summarize_model
 
 
 def main():
@@ -52,8 +52,8 @@ def main():
         'val_dataset_config': val_dataset_config,
         'train_loader_config': train_loader_config,
         'val_loader_config': val_loader_config,
-        'optimizer_config': optimizer_config
-        'seed': seed
+        'optimizer_config': optimizer_config,
+        'seed': seed,
     }
     wandb.init(project="lora", config=config)
     run_experiment(**config)
@@ -68,13 +68,10 @@ def run_experiment(model_config, train_loader_config, val_loader_config, train_d
         torch.cuda.manual_seed_all(42)
 
     # Initialize model with LoRA only training (no biases or layer norms)
-    model = LoraWrapperGPT2NLG.from_pretrained("gpt2", **model_config)
+    model = GPT2LMHeadModelLora.from_pretrained("gpt2", **model_config)
     model.to(device)
     model.train()  # Ensure model starts in training mode
 
-    # Verify parameters before training
-    print("\nVerifying parameters before training starts:")
-    initial_stats = verify_parameters(model)
 
     train_dataset = NLGDataset(**train_dataset_config)
     val_dataset = NLGDataset(**val_dataset_config)
@@ -101,16 +98,13 @@ def run_experiment(model_config, train_loader_config, val_loader_config, train_d
     best_bleu = 0
     patience = 3
     no_improve = 0
+    
+    summarize_model(model, train_loader)
 
     print("\nStarting training...")
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0
-
-        # Verify parameters at start of first epoch
-        if epoch == 0:
-            print(f"\nVerifying parameters at start of epoch {epoch + 1}")
-            verify_parameters(model)
 
         for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"Epoch {epoch + 1}")):
             optimizer.zero_grad(set_to_none=True)
@@ -195,20 +189,6 @@ def run_experiment(model_config, train_loader_config, val_loader_config, train_d
         })
 
     print("\nTraining completed!")
-
-    # Final parameter verification
-    print("\nVerifying parameters after training:")
-    final_stats = verify_parameters(model)
-
-    print("\nComparing initial vs final stats:")
-    print("-" * 50)
-    for key in initial_stats:
-        if initial_stats[key] != final_stats[key]:
-            print(f"WARNING: {key} changed during training!")
-            print(f"  Initial: {initial_stats[key]}")
-            print(f"  Final:   {final_stats[key]}")
-        else:
-            print(f"✓ {key} remained constant: {initial_stats[key]}")
 
 
 if __name__ == '__main__':
