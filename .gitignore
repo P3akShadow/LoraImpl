@@ -1,3 +1,11 @@
 .idea
 *.ipynb*
 *__pycache__*
+
+# exclude pytorch checkpoints
+*.pth
+*.pt
+
+# exclude wandb logs
+*/wandb/
+
