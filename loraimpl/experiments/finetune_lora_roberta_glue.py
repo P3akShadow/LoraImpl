@@ -1,5 +1,6 @@
 import torch
 from transformers import RobertaTokenizer
+import wandb
 
 from loraimpl.data.glue import GLUEDataset
 from loraimpl.models.lora_roberta import LoraWrapperRoberta
@@ -8,12 +9,61 @@ from loraimpl.utils.helper import train_epoch, evaluate_glue
 
 def main():
     # Configuration
-    task_name = 'sst2'  # Choose from GLUE tasks
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    batch_size = 32
     num_epochs = 3
-    learning_rate = 1e-4
-    max_length = 128
+    model_config = {
+        'task_type': 'glue',
+        'lora_rank': 8,
+        'train_biases': True,
+        'train_embedding': False,
+        'train_layer_norms': True
+    }
+    train_dataset_config = {
+        'task_name': 'sst2',
+        'split': 'train',
+        'max_length': 128,
+    }
+    val_dataset_config = {
+        'task_name': 'sst2',
+        'split': 'validation',
+        'max_length': 128,
+    }
+    train_loader_config = {
+        'batch_size': 32,
+        'shuffle': True,
+        'num_workers': 4,
+        'pin_memory': True
+    }
+    val_loader_config = {
+        'batch_size': 32,
+        'shuffle': False,
+        'num_workers': 4,
+        'pin_memory': True
+    }
+    optimizer_config = {
+        'lr': 1e-4,
+        'weight_decay': 0.01,
+        'betas': (0.9, 0.999),
+        'eps': 1e-8
+    }
+
+    # Log configuration to Weights & Biases and run experiment
+    config = {
+        'num_epochs': num_epochs,
+        'model_config': model_config,
+        'train_dataset_config': train_dataset_config,
+        'val_dataset_config': val_dataset_config,
+        'train_loader_config': train_loader_config,
+        'val_loader_config': val_loader_config,
+        'optimizer_config': optimizer_config
+    }
+    wandb.init(project="lora", config=config)
+    run_experiment(**config)
+
+
+def run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config):
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    task_name = train_dataset_config['task_name']
 
     print(f"Running GLUE task: {task_name}")
     print(f"Using device: {device}")
@@ -22,22 +72,13 @@ def main():
     tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
 
     # Load datasets
-    train_dataset = GLUEDataset(task_name, 'train', tokenizer, max_length)
-    eval_dataset = GLUEDataset(task_name, 'validation', tokenizer, max_length)
-
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    eval_loader = torch.utils.data.DataLoader(eval_dataset, batch_size=batch_size)
+    train_dataset = GLUEDataset(tokenizer=tokenizer, **train_dataset_config)
+    eval_dataset = GLUEDataset(tokenizer=tokenizer, **val_dataset_config)
+    train_loader = torch.utils.data.DataLoader(train_dataset, **train_loader_config)
+    eval_loader = torch.utils.data.DataLoader(eval_dataset, **val_loader_config)
 
     # Initialize model
-    num_labels = train_dataset.num_labels
-    model = LoraWrapperRoberta(
-        task_type='glue',
-        num_classes=num_labels,
-        lora_rank=8,
-        train_biases=True,
-        train_embedding=False,
-        train_layer_norms=True
-    )
+    model = LoraWrapperRoberta(num_classes=train_dataset.num_labels, **model_config)
     model.to(device)
 
     # Print parameter counts
@@ -48,7 +89,7 @@ def main():
     print(f"Percentage of trainable parameters: {trainable_params / total_params * 100:.2f}%")
 
     # Initialize optimizer and loss function
-    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.AdamW(model.parameters(), **optimizer_config)
     criterion = torch.nn.MSELoss() if task_name == 'stsb' else torch.nn.CrossEntropyLoss()
 
     # Training loop
@@ -73,6 +114,14 @@ def main():
         if current_metric > best_metric:
             best_metric = current_metric
             model.save_lora_state_dict(f'lora_weights_{task_name}_best.pt')
+
+        # Log metrics to Weights & Biases
+        wandb.log({
+            'epoch': epoch + 1,
+            'loss': train_metrics['loss'],
+            'validation_metrics': eval_metrics,
+        })
+
 
     print("\nTraining completed!")
     print(f"Best validation metric: {best_metric:.4f}")
