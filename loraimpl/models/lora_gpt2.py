@@ -43,19 +43,17 @@ class Conv1DLora(Conv1D):
         super().__init__(nx, nf)
         self.lora_rank = lora_rank
         self.lora_alpha = lora_alpha
-        self.lora_a = nn.Parameter(torch.zeros(lora_rank, nx))
-        self.lora_b = nn.Parameter(torch.zeros(nf, lora_rank))
+        self.lora_a = nn.Parameter(torch.zeros(nf, lora_rank))
+        self.lora_b = nn.Parameter(torch.zeros(lora_rank, nx))
 
     def __repr__(self) -> str:
         return f"Conv1DLora (nf={self.nf}, nx={self.nx}, rank={self.lora_rank}, alpha={self.lora_alpha})"
 
     def forward(self, x):
-        # call super class forward to get output
-        x = super().forward(x)
-        # apply LoRA
-        x = torch.addmm(x, self.lora_b, self.lora_a)
-        return x
-
+        lora_weight = torch.addmm(self.weight, self.lora_a, self.lora_b)
+        size_out = x.size()[:-1] + (self.nf,)
+        x = torch.addmm(self.bias, x.view(-1, x.size(-1)), lora_weight)
+        return x.view(size_out)
 
 
 if __name__ == "__main__":

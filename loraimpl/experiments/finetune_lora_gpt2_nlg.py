@@ -1,4 +1,5 @@
 import torch
+import torchinfo
 import transformers
 from tqdm import tqdm
 from transformers import get_scheduler
@@ -98,8 +99,8 @@ def run_experiment(model_config, train_loader_config, val_loader_config, train_d
     best_bleu = 0
     patience = 3
     no_improve = 0
-    
-    summarize_model(model, train_loader)
+
+    summarize_model(model, dataloader=train_loader, device=device)
 
     print("\nStarting training...")
     for epoch in range(num_epochs):
