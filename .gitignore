@@ -7,5 +7,5 @@
 *.pt
 
 # exclude wandb logs
-*/wandb/
+*wandb*
 
