@@ -1,4 +1,5 @@
 import torch
+import transformers
 from tqdm import tqdm
 from transformers import get_scheduler
 import wandb
@@ -12,11 +13,8 @@ def main():
     # Configuration
     num_epochs = 10
     model_config = {
-        'model_id': 'gpt2',
         'lora_rank': 32,
         'lora_alpha': 64,
-        'train_biases': False,
-        'train_layer_norms': False
     }
     train_dataset_config = {
         'split': 'train',
@@ -44,6 +42,7 @@ def main():
         'betas': (0.9, 0.999),
         'eps': 1e-8
     }
+    seed = 42
 
     # Log configuration to Weights & Biases and run experiment
     config = {
@@ -54,21 +53,22 @@ def main():
         'train_loader_config': train_loader_config,
         'val_loader_config': val_loader_config,
         'optimizer_config': optimizer_config
+        'seed': seed
     }
     wandb.init(project="lora", config=config)
     run_experiment(**config)
 
-def run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config):
+def run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config, seed=None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    print(f"Using device: {device}")
+    if seed:
+        transformers.enable_full_determinism(seed=seed)
 
-    torch.manual_seed(42)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(42)
 
     # Initialize model with LoRA only training (no biases or layer norms)
-    model = LoraWrapperGPT2NLG(**model_config)
+    model = LoraWrapperGPT2NLG.from_pretrained("gpt2", **model_config)
     model.to(device)
     model.train()  # Ensure model starts in training mode
 
