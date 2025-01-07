@@ -18,7 +18,6 @@ class GPT2LMHeadModelLora(GPT2LMHeadModel):
 
     def freeze_non_lora(self):
         for name, param in self.named_parameters():
-            print(name)
             if "lora" not in name:
                 param.requires_grad = False
 
