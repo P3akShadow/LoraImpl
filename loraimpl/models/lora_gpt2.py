@@ -52,58 +52,14 @@ class Conv1DLora(Conv1D):
         return x
 
 
-def verify_parameters(model):
-    """
-    Print which parameters are LoRA-trainable vs non-LoRA, etc.
-    """
-    stats = {
-        'lora_trainable': 0,
-        'lora_frozen': 0,
-        'non_lora_trainable': 0,
-        'non_lora_frozen': 0,
-        'lora_param_count': 0,
-        'total_param_count': 0,
-    }
-
-    print("\nDetailed Parameter Status:")
-    print("-" * 50)
-
-    for name, param in model.named_parameters():
-        stats['total_param_count'] += param.numel()
-        is_lora = any(x in name for x in ['lora_a', 'lora_b', 'lora_ln'])
-
-        if is_lora:
-            if param.requires_grad:
-                stats['lora_trainable'] += 1
-                stats['lora_param_count'] += param.numel()
-                print(f"✓ LoRA trainable: {name}")
-            else:
-                stats['lora_frozen'] += 1
-                print(f"✗ LoRA frozen: {name}")
-        else:
-            if param.requires_grad:
-                stats['non_lora_trainable'] += 1
-                print(f"! Non-LoRA trainable: {name}")
-            else:
-                stats['non_lora_frozen'] += 1
-
-    print("\nSummary:")
-    print(f"LoRA trainable parameters: {stats['lora_trainable']}")
-    print(f"LoRA frozen parameters: {stats['lora_frozen']}")
-    print(f"Non-LoRA trainable parameters: {stats['non_lora_trainable']}")
-    print(f"Non-LoRA frozen parameters: {stats['non_lora_frozen']}")
-    print(f"Total parameters: {stats['total_param_count']:,}")
-    print(f"LoRA parameters: {stats['lora_param_count']:,}")
-    print(f"LoRA percentage: {100.0 * stats['lora_param_count']/stats['total_param_count']:.2f}%")
-
-    return stats
-
 
 if __name__ == "__main__":
-    # Load a pre-trained GPT-2 model
+    # Example of how to load the models
     model_vanilla = GPT2LMHeadModel.from_pretrained("gpt2")
     model_lora = GPT2LMHeadModelLora.from_pretrained("gpt2")
+    model_lora_custom = GPT2LMHeadModelLora.from_pretrained("gpt2", lora_rank=8, lora_alpha=16)
 
     # describe models
     print(model_vanilla)
     print(model_lora)
+    print(model_lora_custom)
