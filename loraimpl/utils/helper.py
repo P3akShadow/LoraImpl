@@ -160,4 +160,4 @@ def summarize_model(model, dataloader=None):
         torchinfo.summary(model)
         return
     example_input = next(iter(dataloader))['input_ids']
-    torchinfo.summary(model, example_input)
+    torchinfo.summary(model, example_input.size())
