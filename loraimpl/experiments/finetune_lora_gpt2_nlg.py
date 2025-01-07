@@ -62,7 +62,7 @@ def main():
 def run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config, seed=None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    if seed:
+    if seed is not None:
         transformers.enable_full_determinism(seed=seed)
 
     if torch.cuda.is_available():
@@ -80,12 +80,7 @@ def run_experiment(model_config, train_loader_config, val_loader_config, train_d
     train_loader = torch.utils.data.DataLoader(train_dataset, **train_loader_config)
     val_loader = torch.utils.data.DataLoader(val_dataset, **val_loader_config)
 
-    # Only optimize trainable parameters
-    trainable_params = [p for p in model.parameters() if p.requires_grad]
-    if not trainable_params:
-        raise ValueError("No trainable parameters found!")
-
-    optimizer = torch.optim.AdamW(trainable_params, **optimizer_config)
+    optimizer = torch.optim.AdamW(model.parameters(), **optimizer_config)
 
     num_training_steps = len(train_loader) * 10
     scheduler = get_scheduler(
@@ -101,8 +96,8 @@ def run_experiment(model_config, train_loader_config, val_loader_config, train_d
     no_improve = 0
 
     summarize_model(model, dataloader=train_loader, device=device)
+    print(f"\nTraining for {num_epochs} epochs...")
 
-    print("\nStarting training...")
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0

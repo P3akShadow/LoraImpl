@@ -154,17 +154,15 @@ def evaluate_nlg(model, eval_loader, tokenizer, device):
     return results
 
 
-def summarize_model(model, dataloader=None, device=None):
+def summarize_model(model, dataloader=None, device=None, depth=7):
     """Describe the model"""
     if dataloader is None:
-        torchinfo.summary(model)
+        torchinfo.summary(model, depth=depth)
         return
     example_input = next(iter(dataloader))
     torchinfo.summary(
         model,
-        input_ids=example_input['input_ids'],
-        attention_mask=example_input['attention_mask'],
-        labels=example_input['labels'],
         device=device,
-        depth=7
+        depth=depth,
+        **example_input
     )
