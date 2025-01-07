@@ -1,14 +1,16 @@
 import torch
 from tqdm import tqdm
 from transformers import get_scheduler
+import wandb
 
 from loraimpl.data.nlg import NLGDataset
 from loraimpl.models.lora_gpt2 import LoraWrapperGPT2NLG, verify_parameters, verify_gradients
 from loraimpl.utils.helper import evaluate_nlg
 
 
-def main():
+def run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
     print(f"Using device: {device}")
 
     torch.manual_seed(42)
@@ -16,13 +18,7 @@ def main():
         torch.cuda.manual_seed_all(42)
 
     # Initialize model with LoRA only training (no biases or layer norms)
-    model = LoraWrapperGPT2NLG(
-        model_id='gpt2',
-        lora_rank=32,
-        lora_alpha=64,
-        train_biases=False,
-        train_layer_norms=False
-    )
+    model = LoraWrapperGPT2NLG(**model_config)
     model.to(device)
     model.train()  # Ensure model starts in training mode
 
@@ -30,35 +26,18 @@ def main():
     print("\nVerifying parameters before training starts:")
     initial_stats = verify_parameters(model)
 
-    train_dataset = NLGDataset(split='train', max_length=128)
-    val_dataset = NLGDataset(split='validation', max_length=128)
+    train_dataset = NLGDataset(**train_dataset_config)
+    val_dataset = NLGDataset(**val_dataset_config)
 
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset,
-        batch_size=8,
-        shuffle=True,
-        num_workers=4,
-        pin_memory=True
-    )
-    val_loader = torch.utils.data.DataLoader(
-        val_dataset,
-        batch_size=8,
-        num_workers=4,
-        pin_memory=True
-    )
+    train_loader = torch.utils.data.DataLoader(train_dataset, **train_loader_config)
+    val_loader = torch.utils.data.DataLoader(val_dataset, **val_loader_config)
 
     # Only optimize trainable parameters
     trainable_params = [p for p in model.parameters() if p.requires_grad]
     if not trainable_params:
         raise ValueError("No trainable parameters found!")
 
-    optimizer = torch.optim.AdamW(
-        trainable_params,
-        lr=2e-5,
-        weight_decay=0.01,
-        betas=(0.9, 0.999),
-        eps=1e-8
-    )
+    optimizer = torch.optim.AdamW(trainable_params, **optimizer_config)
 
     num_training_steps = len(train_loader) * 10
     scheduler = get_scheduler(
@@ -69,7 +48,6 @@ def main():
     )
 
     scaler = torch.cuda.amp.GradScaler()
-    num_epochs = 10
     best_bleu = 0
     patience = 3
     no_improve = 0
@@ -175,6 +153,45 @@ def main():
             print(f"  Final:   {final_stats[key]}")
         else:
             print(f"✓ {key} remained constant: {initial_stats[key]}")
+
+
+def main():
+    model_config = {
+        'model_id': 'gpt2',
+        'lora_rank': 32,
+        'lora_alpha': 64,
+        'train_biases': False,
+        'train_layer_norms': False
+    }
+    train_loader_config = {
+        'batch_size': 8,
+        'shuffle': True,
+        'num_workers': 4,
+        'pin_memory': True
+    }
+    val_loader_config = {
+        'batch_size': 8,
+        'shuffle': False,
+        'num_workers': 4,
+        'pin_memory': True
+    }
+    train_dataset_config = {
+        'split': 'train',
+        'max_length': 128
+    }
+    val_dataset_config = {
+        'split': 'validation',
+        'max_length': 128
+    }
+    optimizer_config = {
+        'lr': 2e-5,
+        'weight_decay': 0.01,
+        'betas': (0.9, 0.999),
+        'eps': 1e-8
+    }
+    num_epochs = 10
+
+    run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config)
 
 
 if __name__ == '__main__':
