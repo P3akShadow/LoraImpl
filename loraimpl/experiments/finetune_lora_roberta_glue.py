@@ -1,15 +1,16 @@
 import torch
+import transformers
 from transformers import RobertaTokenizer
 import wandb
 
 from loraimpl.data.glue import GLUEDataset
 from loraimpl.models.lora_roberta import LoraWrapperRoberta
-from loraimpl.utils.helper import train_epoch, evaluate_glue
+from loraimpl.utils.helper import train_epoch, evaluate_glue, summarize_model
 
 
 def main():
     # Configuration
-    num_epochs = 3
+    num_epochs = 10
     model_config = {
         'task_type': 'glue',
         'lora_rank': 8,
@@ -45,6 +46,7 @@ def main():
         'betas': (0.9, 0.999),
         'eps': 1e-8
     }
+    seed = 42
 
     # Log configuration to Weights & Biases and run experiment
     config = {
@@ -54,19 +56,20 @@ def main():
         'val_dataset_config': val_dataset_config,
         'train_loader_config': train_loader_config,
         'val_loader_config': val_loader_config,
-        'optimizer_config': optimizer_config
+        'optimizer_config': optimizer_config,
+        'seed': seed,
     }
     wandb.init(project="lora", config=config)
     run_experiment(**config)
 
 
-def run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config):
-
+def run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config, seed=None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    task_name = train_dataset_config['task_name']
 
-    print(f"Running GLUE task: {task_name}")
-    print(f"Using device: {device}")
+    if seed is not None:
+        transformers.enable_full_determinism(seed=seed)
+
+    task_name = train_dataset_config['task_name']
 
     # Initialize tokenizer
     tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
@@ -81,16 +84,12 @@ def run_experiment(model_config, train_loader_config, val_loader_config, train_d
     model = LoraWrapperRoberta(num_classes=train_dataset.num_labels, **model_config)
     model.to(device)
 
-    # Print parameter counts
-    total_params = sum(p.numel() for p in model.parameters())
-    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"Total parameters: {total_params:,}")
-    print(f"Trainable parameters: {trainable_params:,}")
-    print(f"Percentage of trainable parameters: {trainable_params / total_params * 100:.2f}%")
-
     # Initialize optimizer and loss function
     optimizer = torch.optim.AdamW(model.parameters(), **optimizer_config)
     criterion = torch.nn.MSELoss() if task_name == 'stsb' else torch.nn.CrossEntropyLoss()
+
+    summarize_model(model, dataloader=train_loader, device=device)
+    print(f"\nTraining for {num_epochs} epochs...")
 
     # Training loop
     best_metric = float('-inf')

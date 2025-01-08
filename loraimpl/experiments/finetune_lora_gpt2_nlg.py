@@ -1,22 +1,21 @@
 import torch
+import torchinfo
+import transformers
 from tqdm import tqdm
 from transformers import get_scheduler
 import wandb
 
 from loraimpl.data.nlg import NLGDataset
-from loraimpl.models.lora_gpt2 import LoraWrapperGPT2NLG, verify_parameters, verify_gradients
-from loraimpl.utils.helper import evaluate_nlg
+from loraimpl.models.lora_gpt2 import GPT2LMHeadModelLora
+from loraimpl.utils.helper import evaluate_nlg, summarize_model
 
 
 def main():
     # Configuration
     num_epochs = 10
     model_config = {
-        'model_id': 'gpt2',
         'lora_rank': 32,
         'lora_alpha': 64,
-        'train_biases': False,
-        'train_layer_norms': False
     }
     train_dataset_config = {
         'split': 'train',
@@ -44,6 +43,7 @@ def main():
         'betas': (0.9, 0.999),
         'eps': 1e-8
     }
+    seed = 42
 
     # Log configuration to Weights & Biases and run experiment
     config = {
@@ -53,28 +53,26 @@ def main():
         'val_dataset_config': val_dataset_config,
         'train_loader_config': train_loader_config,
         'val_loader_config': val_loader_config,
-        'optimizer_config': optimizer_config
+        'optimizer_config': optimizer_config,
+        'seed': seed,
     }
     wandb.init(project="lora", config=config)
     run_experiment(**config)
 
-def run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config):
+def run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config, seed=None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    print(f"Using device: {device}")
+    if seed is not None:
+        transformers.enable_full_determinism(seed=seed)
 
-    torch.manual_seed(42)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(42)
 
     # Initialize model with LoRA only training (no biases or layer norms)
-    model = LoraWrapperGPT2NLG(**model_config)
+    model = GPT2LMHeadModelLora.from_pretrained("gpt2", **model_config)
     model.to(device)
     model.train()  # Ensure model starts in training mode
 
-    # Verify parameters before training
-    print("\nVerifying parameters before training starts:")
-    initial_stats = verify_parameters(model)
 
     train_dataset = NLGDataset(**train_dataset_config)
     val_dataset = NLGDataset(**val_dataset_config)
@@ -82,12 +80,7 @@ def run_experiment(model_config, train_loader_config, val_loader_config, train_d
     train_loader = torch.utils.data.DataLoader(train_dataset, **train_loader_config)
     val_loader = torch.utils.data.DataLoader(val_dataset, **val_loader_config)
 
-    # Only optimize trainable parameters
-    trainable_params = [p for p in model.parameters() if p.requires_grad]
-    if not trainable_params:
-        raise ValueError("No trainable parameters found!")
-
-    optimizer = torch.optim.AdamW(trainable_params, **optimizer_config)
+    optimizer = torch.optim.AdamW(model.parameters(), **optimizer_config)
 
     num_training_steps = len(train_loader) * 10
     scheduler = get_scheduler(
@@ -102,60 +95,30 @@ def run_experiment(model_config, train_loader_config, val_loader_config, train_d
     patience = 3
     no_improve = 0
 
-    print("\nStarting training...")
+    summarize_model(model, dataloader=train_loader, device=device)
+    print(f"\nTraining for {num_epochs} epochs...")
+
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0
 
-        # Verify parameters at start of first epoch
-        if epoch == 0:
-            print(f"\nVerifying parameters at start of epoch {epoch + 1}")
-            verify_parameters(model)
-
         for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"Epoch {epoch + 1}")):
-            optimizer.zero_grad(set_to_none=True)
 
             input_ids = batch['input_ids'].to(device)
             attention_mask = batch['attention_mask'].to(device)
             labels = batch['labels'].to(device)
 
-            # Verify gradients on first batch of first epoch
-            if epoch == 0 and batch_idx == 0:
-                print(f"\nVerifying gradients on first batch:")
-                model.train()
-                # Verification forward pass
-                with torch.set_grad_enabled(True):
-                    outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
-                    verification_loss = outputs.loss
-
-                    print(f"Loss requires grad: {verification_loss.requires_grad}")
-                    print(f"Loss grad_fn: {verification_loss.grad_fn}")
-
-                    if verification_loss.requires_grad:
-                        verification_loss.backward()
-                        verify_gradients(model, verification_loss)
-                    else:
-                        raise ValueError("Verification loss does not require gradients!")
-
-                optimizer.zero_grad(set_to_none=True)
-
             # Normal training step
             model.train()
-            with torch.set_grad_enabled(True):
-                with torch.cuda.amp.autocast():
-                    outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
-                    loss = outputs.loss
+            outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
+            loss = outputs.loss
 
-                # Check if loss requires gradients
-                if not loss.requires_grad:
-                    raise ValueError("Training loss does not require gradients!")
-
-                scaler.scale(loss).backward()
-                scaler.unscale_(optimizer)
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-                scaler.step(optimizer)
-                scaler.update()
-                scheduler.step()
+            scaler.scale(loss).backward()
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            scaler.step(optimizer)
+            scaler.update()
+            scheduler.step()
 
             total_loss += loss.item()
 
@@ -195,20 +158,6 @@ def run_experiment(model_config, train_loader_config, val_loader_config, train_d
         })
 
     print("\nTraining completed!")
-
-    # Final parameter verification
-    print("\nVerifying parameters after training:")
-    final_stats = verify_parameters(model)
-
-    print("\nComparing initial vs final stats:")
-    print("-" * 50)
-    for key in initial_stats:
-        if initial_stats[key] != final_stats[key]:
-            print(f"WARNING: {key} changed during training!")
-            print(f"  Initial: {initial_stats[key]}")
-            print(f"  Final:   {final_stats[key]}")
-        else:
-            print(f"✓ {key} remained constant: {initial_stats[key]}")
 
 
 if __name__ == '__main__':
