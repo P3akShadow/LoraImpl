@@ -7,10 +7,10 @@ class NLGDataset(Dataset):
     Simple dataset for E2E NLG,
     with a tokenization approach that partially masks the 'input' portion.
     """
-    def __init__(self, split='train', max_length=128):
+    def __init__(self, model_name, split='train', max_length=128):
         self.data = load_dataset('GEM/e2e_nlg', trust_remote_code=True)
         self.data = self.data[split]
-        self.tokenizer = GPT2TokenizerFast.from_pretrained('gpt2')
+        self.tokenizer = GPT2TokenizerFast.from_pretrained(model_name)
 
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.padding_side = 'left'
@@ -64,3 +64,29 @@ class NLGDataset(Dataset):
         }
 
 
+class CollateFunction:
+    def __init__(self, tokenizer, pad_token_id):
+        self.tokenizer = tokenizer
+        self.tokenizer.padding_side = "left"
+        self.tokenizer.pad_token = tokenizer.eos_token
+        self.pad_token_id = pad_token_id
+        self.split = split
+
+    def __call__(self, batch):
+        inputs = [entry['meaning_representation'] for entry in batch]
+        targets = [entry['meaning_representation'] + '\n' + entry['target'] for entry in batch]
+
+        # Tokenize inputs and targets
+        inputs_encoded = self.tokenizer(inputs, padding=True, truncation=True, return_tensors="pt")
+        targets_encoded = self.tokenizer(targets, padding=True, truncation=True, return_tensors="pt")
+
+        inputs_dict = {
+            'input_ids': inputs_encoded['input_ids'],
+            'attention_mask': inputs_encoded['attention_mask'],
+            'labels': inputs_encoded['input_ids'].clone()
+        }
+        targets_dict = {
+            'input_ids': targets_encoded['input_ids'],
+        }
+
+        return inputs_dict, targets_dict

@@ -3,6 +3,8 @@ import torch.nn as nn
 from transformers import GPT2LMHeadModel, Conv1D
 from transformers.models.gpt2.modeling_gpt2 import GPT2Attention
 
+from loraimpl.data.nlg import CollateFunction
+
 
 class GPT2LMHeadModelLora(GPT2LMHeadModel):
     """Extend GPT2LMHeadModel to support LoRA."""
@@ -62,22 +64,32 @@ class Conv1DLora(Conv1D):
 
 if __name__ == "__main__":
     # Example of how to load the models
-    # model_vanilla = GPT2LMHeadModel.from_pretrained("gpt2")
-    # model_lora = GPT2LMHeadModelLora.from_pretrained("gpt2")
-    model_lora_custom = GPT2LMHeadModelLora.from_pretrained("gpt2-large", lora_rank=8, lora_alpha=16)
+    # model = GPT2LMHeadModelLora.from_pretrained("gpt2", lora_rank=8, lora_alpha=16)
+    from torchinfo import summary
+    from transformers import GPT2TokenizerFast
+    from datasets import load_dataset
 
-    # describe models
-    # print(model_vanilla)
-    # print(model_lora)
-    print(model_lora_custom)
+    model = GPT2LMHeadModelLora.from_pretrained("gpt2")
 
-    # Freeze non-LoRA parameters
-    model_lora_custom.freeze_non_lora()
+    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
+    tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "left"
 
     # TorchInfo Summaries
-    from torchinfo import summary
-    # summary(model_vanilla, depth=7)
-    # summary(model_lora, depth=7)
-    summary(model_lora_custom, depth=7)
+    # summary(model_lora_custom, depth=7)
+
+    train_dataset = load_dataset('GEM/e2e_nlg', split='train')
+    collate_fn = CollateFunction(tokenizer, tokenizer.pad_token_id)
+    data_loader = torch.utils.data.DataLoader(train_dataset, collate_fn=collate_fn, batch_size=5)
+
+    test_input = tokenizer("Hello, how are you?", return_tensors="pt")["input_ids"]
+    test_output = model.generate(test_input)
+    decoded = tokenizer.decode(test_output[0], skip_special_tokens=True)
+    print(decoded)
+
+
+
+
+
 
 
