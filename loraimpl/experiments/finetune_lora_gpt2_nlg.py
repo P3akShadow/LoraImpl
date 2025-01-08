@@ -13,6 +13,7 @@ from loraimpl.utils.helper import evaluate_nlg, summarize_model
 def main():
     # Configuration
     num_epochs = 10
+    type = 'gpt2 on nlg'
     model_config = {
         'lora_rank': 32,
         'lora_alpha': 64,
@@ -47,6 +48,7 @@ def main():
 
     # Log configuration to Weights & Biases and run experiment
     config = {
+        'type': type,
         'num_epochs': num_epochs,
         'model_config': model_config,
         'train_dataset_config': train_dataset_config,
@@ -59,7 +61,7 @@ def main():
     wandb.init(project="lora", config=config)
     run_experiment(**config)
 
-def run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config, seed=None):
+def run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config, seed=None, **kwargs):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     if seed is not None:

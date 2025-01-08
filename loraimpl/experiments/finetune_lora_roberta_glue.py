@@ -11,6 +11,7 @@ from loraimpl.utils.helper import train_epoch, evaluate_glue, summarize_model
 def main():
     # Configuration
     num_epochs = 10
+    type = 'roberta on glue'
     model_config = {
         'task_type': 'glue',
         'lora_rank': 8,
@@ -50,6 +51,7 @@ def main():
 
     # Log configuration to Weights & Biases and run experiment
     config = {
+        'type': type,
         'num_epochs': num_epochs,
         'model_config': model_config,
         'train_dataset_config': train_dataset_config,
@@ -63,7 +65,7 @@ def main():
     run_experiment(**config)
 
 
-def run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config, seed=None):
+def run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config, seed=None, **kwargs):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     if seed is not None:
