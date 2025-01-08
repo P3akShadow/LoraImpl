@@ -1,5 +1,4 @@
 import torch
-import torchinfo
 import transformers
 from tqdm import tqdm
 from transformers import get_scheduler, GPT2TokenizerFast
@@ -15,8 +14,8 @@ def main():
     num_epochs = 10
     type = 'gpt2 on nlg'
     model_config = {
-        'lora_rank': 32,
-        'lora_alpha': 64,
+        'lora_rank': 8,
+        'lora_alpha': 16,
     }
     train_dataset_config = {
         'split': 'train',
@@ -153,8 +152,9 @@ def run_experiment(model_config, train_loader_config, val_loader_config, train_d
         else:
             no_improve += 1
             if no_improve >= patience:
-                print("\nEarly stopping triggered!")
-                break
+                # print("\nEarly stopping triggered!")
+                # break
+                print()
 
         wandb.log({
             'epoch': epoch + 1,
