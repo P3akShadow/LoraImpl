@@ -71,10 +71,12 @@ def run_experiment(model_config, train_loader_config, val_loader_config, train_d
         torch.cuda.manual_seed_all(42)
 
     # Initialize model with LoRA only training (no biases or layer norms)
-    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
     model = GPT2LMHeadModelLora.from_pretrained("gpt2", **model_config)
     model.to(device)
     model.train()  # Ensure model starts in training mode
+    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
+    tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "left"
 
 
     train_dataset = NLGDataset(**train_dataset_config)
