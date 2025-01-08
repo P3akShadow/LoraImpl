@@ -12,7 +12,7 @@ from loraimpl.utils.helper import evaluate_nlg, summarize_model
 def main():
     # Configuration
     num_epochs = 10
-    type = 'gpt2 on nlg'
+    model_name = 'gpt2-large'
     model_config = {
         'lora_rank': 8,
         'lora_alpha': 16,
@@ -47,7 +47,7 @@ def main():
 
     # Log configuration to Weights & Biases and run experiment
     config = {
-        'type': type,
+        'model_name': model_name,
         'num_epochs': num_epochs,
         'model_config': model_config,
         'train_dataset_config': train_dataset_config,
@@ -60,7 +60,7 @@ def main():
     wandb.init(project="lora", config=config)
     run_experiment(**config)
 
-def run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config, seed=None, **kwargs):
+def run_experiment(model_name, model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config, seed=None, **kwargs):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     if seed is not None:
@@ -70,10 +70,10 @@ def run_experiment(model_config, train_loader_config, val_loader_config, train_d
         torch.cuda.manual_seed_all(42)
 
     # Initialize model with LoRA only training (no biases or layer norms)
-    model = GPT2LMHeadModelLora.from_pretrained("gpt2", **model_config)
+    model = GPT2LMHeadModelLora.from_pretrained(model_name, **model_config)
     model.to(device)
     model.train()  # Ensure model starts in training mode
-    tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
+    tokenizer = GPT2TokenizerFast.from_pretrained(model_name)
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "left"
 
