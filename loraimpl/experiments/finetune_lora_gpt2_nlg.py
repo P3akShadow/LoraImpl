@@ -13,9 +13,9 @@ def main():
     # Configuration
     num_epochs = 10
     model_name = 'gpt2-large'
-    model_config = {
-        'lora_rank': 8,
-        'lora_alpha': 16,
+    model_config = { # LoRA hyperparameters from the paper
+        'lora_rank': 4,
+        'lora_alpha': 32,
     }
     train_dataset_config = {
         'split': 'train',
