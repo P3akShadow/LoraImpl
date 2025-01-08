@@ -69,7 +69,7 @@ def run_experiment(model_config, train_loader_config, val_loader_config, train_d
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     if seed is not None:
-        transformers.enable_full_determinism(seed=seed)
+        transformers.enable_full_determinism(seed=seed, warn_only=True)
 
     task_name = train_dataset_config['task_name']
 
