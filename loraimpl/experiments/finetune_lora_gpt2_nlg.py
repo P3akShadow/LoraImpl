@@ -15,7 +15,7 @@ def main():
     config = {
         'num_epochs': 10,
         'model_cfg': {
-            'name': 'gpt2-large',
+            'name': 'gpt2',
             'kwargs': {  # LoRA hyperparameters from the paper
                 'lora_rank': 4,
                 'lora_alpha': 32,
@@ -45,8 +45,9 @@ def main():
     }
 
     # Log configuration to Weights & Biases and run experiment
-    with wandb.init(project="lora", config=config) as run:
-        run_experiment(**config, run=run)
+    # with wandb.init(project="lora", config=config) as run:
+    #     run_experiment(**config, run=run)
+    run_experiment(**config)
 
 def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg, tokenizer_cfg, seed=None, run=None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -77,7 +78,7 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
     summarize_model(model, dataloader=train_loader, device=device)
 
     print("\nEvaluating before training...")
-    metrics = evaluate_nlg(model, val_loader, tokenizer, device)
+    # metrics = evaluate_nlg(model, val_loader, tokenizer, device)
 
     print(f"\nTraining for {num_epochs} epochs...")
 
@@ -98,7 +99,6 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
             batch = {k: v.to(device) for k, v in batch.items()}
 
             # Normal training step
-            model.train()
             outputs = model(**batch)
             loss = outputs.loss
 

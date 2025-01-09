@@ -47,9 +47,8 @@ class Conv1DLora(Conv1D):
         self.lora_rank = lora_rank
         self.lora_alpha = lora_alpha
         self.scaling = self.lora_alpha / self.lora_rank
-        # initialize A the same way as in Conv1D and B to zeros
-        self.lora_a = nn.Parameter(torch.empty(nf, lora_rank))
-        nn.init.normal_(self.lora_a, std=0.02)
+        # initialize A random and B to zeros
+        self.lora_a = nn.Parameter(torch.rand(nf, lora_rank))
         self.lora_b = nn.Parameter(torch.zeros(lora_rank, nx))
 
     def __repr__(self) -> str:
