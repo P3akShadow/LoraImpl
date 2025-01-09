@@ -76,7 +76,8 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
 
     summarize_model(model, dataloader=train_loader, device=device)
 
-    evaluate_nlg(model, val_loader, tokenizer, device)
+    print("\nEvaluating before training...")
+    metrics = evaluate_nlg(model, val_loader, tokenizer, device)
 
     print(f"\nTraining for {num_epochs} epochs...")
 
@@ -84,6 +85,10 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
         artifact = wandb.Artifact(model_cfg['name']+"-lora", type="model")
         artifact.add_dir("checkpoint")
         run.log_artifact(artifact)
+        wandb.log({
+            'epoch': 0,
+            'validation_metrics': metrics
+        })
 
     for epoch in range(num_epochs):
         model.train()
