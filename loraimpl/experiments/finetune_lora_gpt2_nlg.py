@@ -45,8 +45,7 @@ def main():
     }
 
     # Log configuration to Weights & Biases and run experiment
-    with wandb.init(project="lora", config=config) as run:
-        run_experiment(**config, run=run)
+    run_experiment(**config)
 
 def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg, tokenizer_cfg, seed=None, run=None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -70,7 +69,7 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
     collate_fn = CollateFunction(tokenizer)
 
     train_loader = torch.utils.data.DataLoader(train_dataset, collate_fn=collate_fn, shuffle=True, **loader_cfg)
-    val_loader = torch.utils.data.DataLoader(val_dataset, collate_fn=collate_fn, shuffle=False, **loader_cfg)
+    val_loader = torch.utils.data.DataLoader(val_dataset, collate_fn=collate_fn.validation, shuffle=False, **loader_cfg)
 
     optimizer = torch.optim.AdamW(model.parameters(), **optimizer_cfg)
 

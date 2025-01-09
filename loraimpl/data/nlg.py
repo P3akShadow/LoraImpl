@@ -65,11 +65,39 @@ class NLGDataset(Dataset):
 
 
 class CollateFunction:
-    def __init__(self, tokenizer):
+    def __init__(self, tokenizer, split='train'):
         self.tokenizer = tokenizer
         self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.split = split
 
     def __call__(self, batch):
+        if self.split == 'train':
+            return self.train(batch)
+        elif self.split == 'validation':
+            return self.train(batch)
+        else:
+            raise ValueError(f"Invalid split: {self.split}")
+
+    def train(self, batch):
+        text = [entry['meaning_representation'] + entry['target'] for entry in batch]
+        prompt = [entry['meaning_representation'] for entry in batch]
+
+        # Tokenize inputs and targets
+        inputs_encoded = self.tokenizer(
+            text=text,
+            text_target=text,  # causal language modeling -> labels will be shifted internally
+            return_tensors='pt',
+            padding=True,
+            truncation=True,
+        )
+        # Mask labels of input portion
+        mask_length = [len(self.tokenizer.tokenize(entry)) for entry in prompt]
+        for i, length in enumerate(mask_length):
+            inputs_encoded['labels'][i, :length] = -100
+
+        return inputs_encoded
+
+    def validation(self, batch):
         inputs = [entry['meaning_representation'] for entry in batch]
         targets = [entry['target'] for entry in batch]
 
@@ -81,11 +109,6 @@ class CollateFunction:
             padding=True,
             truncation=True,
         )
-
-        return inputs_encoded
-
-    def validation(self, batch):
-        inputs_encoded = self.__call__(batch)
         references = [entry['references'] for entry in batch if 'references' in entry]
         return inputs_encoded, references
 
