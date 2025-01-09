@@ -56,7 +56,7 @@ class Conv1DLora(Conv1D):
         return f"Conv1DLora (nf={self.nf}, nx={self.nx}, rank={self.lora_rank}, alpha={self.lora_alpha})"
 
     def forward(self, x):
-        lora_weight = torch.addmm(self.weight, self.lora_a, self.lora_b) * self.scaling
+        lora_weight = self.weight.addmm(self.lora_a, self.lora_b, alpha=self.scaling)
         size_out = x.size()[:-1] + (self.nf,)
         x = torch.addmm(self.bias, x.view(-1, x.size(-1)), lora_weight)
         return x.view(size_out)
@@ -80,11 +80,12 @@ if __name__ == "__main__":
 
     train_dataset = load_dataset('GEM/e2e_nlg', split='train')
     collate_fn = CollateFunction(tokenizer, tokenizer.pad_token_id)
-    data_loader = torch.utils.data.DataLoader(train_dataset, collate_fn=collate_fn, batch_size=5)
+    data_loader = torch.utils.data.DataLoader(train_dataset, collate_fn=collate_fn, batch_size=1)
 
-    test_input = tokenizer("Hello, how are you?", return_tensors="pt")["input_ids"]
-    test_output = model.generate(test_input)
-    decoded = tokenizer.decode(test_output[0], skip_special_tokens=True)
+    model.eval()
+    test_input, test_target = next(iter(data_loader))
+    test_output = model.generate(**test_input)
+    decoded = tokenizer.decode(test_output[0], skip_special_tokens=False)
     print(decoded)
 
 

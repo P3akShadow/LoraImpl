@@ -70,7 +70,6 @@ class CollateFunction:
         self.tokenizer.padding_side = "left"
         self.tokenizer.pad_token = tokenizer.eos_token
         self.pad_token_id = pad_token_id
-        self.split = split
 
     def __call__(self, batch):
         inputs = [entry['meaning_representation'] for entry in batch]
