@@ -76,6 +76,8 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
 
     summarize_model(model, dataloader=train_loader, device=device)
 
+    evaluate_nlg(model, val_loader, tokenizer, device)
+
     print(f"\nTraining for {num_epochs} epochs...")
 
     if run is not None:
