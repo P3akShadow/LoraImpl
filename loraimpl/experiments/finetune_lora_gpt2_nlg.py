@@ -67,7 +67,7 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
 
     tokenizer = GPT2TokenizerFast.from_pretrained(model_cfg['name'], **tokenizer_cfg)
 
-    collate_fn = CollateFunction(tokenizer, device)
+    collate_fn = CollateFunction(tokenizer)
 
     train_loader = torch.utils.data.DataLoader(train_dataset, collate_fn=collate_fn, shuffle=True, **loader_cfg)
     val_loader = torch.utils.data.DataLoader(val_dataset, collate_fn=collate_fn, shuffle=False, **loader_cfg)
@@ -84,6 +84,7 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
         total_loss = 0
 
         for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"Epoch {epoch + 1}")):
+            batch = {k: v.to(device) for k, v in batch.items()}
 
             # Normal training step
             model.train()

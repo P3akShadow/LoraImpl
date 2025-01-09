@@ -65,10 +65,9 @@ class NLGDataset(Dataset):
 
 
 class CollateFunction:
-    def __init__(self, tokenizer, device):
+    def __init__(self, tokenizer):
         self.tokenizer = tokenizer
         self.tokenizer.pad_token = self.tokenizer.eos_token
-        self.device = device
 
     def __call__(self, batch):
         inputs = [entry['meaning_representation'] for entry in batch]
@@ -83,7 +82,7 @@ class CollateFunction:
             truncation=True,
         )
 
-        return inputs_encoded.to(self.device)
+        return inputs_encoded
 
     def validation(self, batch):
         inputs_encoded = self.__call__(batch)

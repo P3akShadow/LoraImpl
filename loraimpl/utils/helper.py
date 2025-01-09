@@ -90,7 +90,7 @@ def evaluate_glue(model, eval_loader, criterion, device, task_name):
     return metrics
 
 
-def evaluate_nlg(model, eval_loader, tokenizer):
+def evaluate_nlg(model, eval_loader, tokenizer, device):
     model.eval()
 
     bleu = evaluate.load('bleu')
@@ -101,6 +101,7 @@ def evaluate_nlg(model, eval_loader, tokenizer):
     n_batches = len(eval_loader)
 
     for batch, references in tqdm(eval_loader, desc='Evaluating'):
+        batch = {k: v.to(device) for k, v in batch.items()}
         batch_metrics = dict()
 
         # we won't heavily tune generation here
@@ -165,5 +166,5 @@ if __name__ == '__main__':
     dl = torch.utils.data.DataLoader(ds, collate_fn=cf.validation, batch_size=2)
 
 
-    mtr = evaluate_nlg(m, dl, t)
+    mtr = evaluate_nlg(m, dl, t, torch.device('cpu'))
     print(mtr)
