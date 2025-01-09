@@ -1,3 +1,5 @@
+import numbers
+
 import torch
 import numpy as np
 import scipy
@@ -95,63 +97,42 @@ def evaluate_nlg(model, eval_loader, tokenizer, device):
     rouge = evaluate.load('rouge')
     meteor = evaluate.load('meteor')
 
-    all_preds = []
-    all_refs = []
+    metrics = dict()
+    n_batches = len(eval_loader)
 
-    with torch.no_grad():
-        for batch in tqdm(eval_loader, desc='Evaluating'):
-            input_ids = batch['input_ids'].to(device)
-            attention_mask = batch['attention_mask'].to(device)
+    for batch, references in tqdm(eval_loader, desc='Evaluating'):
+        batch = {k: v.to(device) for k, v in batch.items()}
+        batch_metrics = dict()
 
-            # we won't heavily tune generation here
-            outputs = model.generate(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                max_new_tokens=50,
-                do_sample=True,
-                top_p=0.85,
-                temperature=0.6,
-                num_beams=5,
-                repetition_penalty=1.5,
-                no_repeat_ngram_size=3,
-                pad_token_id=tokenizer.pad_token_id,
-                early_stopping=True,
-            )
+        # we won't heavily tune generation here
+        outputs = model.generate(
+            **batch,
+            # max_new_tokens=50,
+            # do_sample=True,
+            # top_p=0.85,
+            # temperature=0.6,
+            # num_beams=5,
+            # repetition_penalty=1.5,
+            # no_repeat_ngram_size=3,
+            early_stopping=True,
+        )
 
-            for generated_seq in outputs:
-                decoded = tokenizer.decode(generated_seq, skip_special_tokens=True)
-                all_preds.append(decoded.strip())
+        outputs = outputs[:, batch['input_ids'].shape[1]:]
 
-            for lbl in batch['labels']:
-                # Convert the -100 to pad
-                lbl = torch.where(lbl == -100, tokenizer.pad_token_id, lbl)
-                decoded = tokenizer.decode(lbl, skip_special_tokens=True)
-                all_refs.append(decoded.strip())
+        predictions = tokenizer.batch_decode(outputs, skip_special_tokens=True)
+        batch_metrics |= bleu.compute(predictions=predictions, references=references)
+        batch_metrics |= rouge.compute(predictions=predictions, references=references)
+        batch_metrics |= meteor.compute(predictions=predictions, references=references)
 
-    # Show an example
-    if len(all_preds) > 0:
-        print("\nExample generation:")
-        print("Pred:", all_preds[0])
-        print("Ref: ", all_refs[0])
+        for key, value in batch_metrics.items():
+            if not isinstance(value, numbers.Number):
+                continue
+            if key not in metrics:
+                metrics[key] = value / n_batches
+            else:
+                metrics[key] += value / n_batches
 
-    # Evaluate
-    results = {}
-    results["bleu"] = bleu.compute(
-        predictions=all_preds,
-        references=[[r] for r in all_refs]
-    )["bleu"]
-
-    r_scores = rouge.compute(predictions=all_preds, references=all_refs)
-    results["rouge1"] = r_scores["rouge1"]
-    results["rouge2"] = r_scores["rouge2"]
-    results["rougeL"] = r_scores["rougeL"]
-
-    results["meteor"] = meteor.compute(
-        predictions=all_preds,
-        references=all_refs
-    )["meteor"]
-
-    return results
+    return metrics
 
 
 def summarize_model(model, dataloader=None, device=None, depth=7):
@@ -166,3 +147,24 @@ def summarize_model(model, dataloader=None, device=None, depth=7):
         depth=depth,
         **example_input
     )
+
+
+# debugging and testing
+if __name__ == '__main__':
+    from transformers import GPT2TokenizerFast
+    from loraimpl.models.lora_gpt2 import GPT2LMHeadModelLora
+    from datasets import load_dataset
+    from loraimpl.data.nlg import CollateFunction
+
+    m = GPT2LMHeadModelLora.from_pretrained("gpt2")
+
+    t = GPT2TokenizerFast.from_pretrained("gpt2", padding_side='left')
+    t.padding_side = "left"
+
+    ds = load_dataset('GEM/e2e_nlg', split='validation')
+    cf = CollateFunction(t, torch.device('cpu'))
+    dl = torch.utils.data.DataLoader(ds, collate_fn=cf.validation, batch_size=2)
+
+
+    mtr = evaluate_nlg(m, dl, t, torch.device('cpu'))
+    print(mtr)
