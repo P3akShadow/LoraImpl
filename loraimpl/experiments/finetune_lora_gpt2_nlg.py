@@ -45,7 +45,8 @@ def main():
     }
 
     # Log configuration to Weights & Biases and run experiment
-    run_experiment(**config)
+    with wandb.init(project="lora", config=config) as run:
+        run_experiment(**config, run=run)
 
 def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg, tokenizer_cfg, seed=None, run=None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
