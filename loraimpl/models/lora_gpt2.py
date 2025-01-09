@@ -72,18 +72,17 @@ if __name__ == "__main__":
     model = GPT2LMHeadModelLora.from_pretrained("gpt2")
 
     tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
-    tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "left"
 
     # TorchInfo Summaries
     # summary(model_lora_custom, depth=7)
 
-    train_dataset = load_dataset('GEM/e2e_nlg', split='train')
-    collate_fn = CollateFunction(tokenizer, tokenizer.pad_token_id)
-    data_loader = torch.utils.data.DataLoader(train_dataset, collate_fn=collate_fn, batch_size=1)
+    train_dataset = load_dataset('GEM/e2e_nlg', split='validation')
+    collate_fn = CollateFunction(tokenizer, torch.device('cpu'))
+    data_loader = torch.utils.data.DataLoader(train_dataset, collate_fn=collate_fn.validation, batch_size=2)
 
     model.eval()
-    test_input, test_target = next(iter(data_loader))
+    test_input, _ = next(iter(data_loader))
     test_output = model.generate(**test_input)
     decoded = tokenizer.decode(test_output[0], skip_special_tokens=False)
     print(decoded)

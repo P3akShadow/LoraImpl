@@ -65,27 +65,34 @@ class NLGDataset(Dataset):
 
 
 class CollateFunction:
-    def __init__(self, tokenizer, pad_token_id):
+    def __init__(self, tokenizer, device):
         self.tokenizer = tokenizer
-        self.tokenizer.padding_side = "left"
-        self.tokenizer.pad_token = tokenizer.eos_token
-        self.pad_token_id = pad_token_id
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.device = device
 
     def __call__(self, batch):
         inputs = [entry['meaning_representation'] for entry in batch]
-        targets = [entry['meaning_representation'] + '\n' + entry['target'] for entry in batch]
+        targets = [entry['target'] for entry in batch]
 
         # Tokenize inputs and targets
-        inputs_encoded = self.tokenizer(inputs, padding=True, truncation=True, return_tensors="pt")
-        targets_encoded = self.tokenizer(targets, padding=True, truncation=True, return_tensors="pt")
+        inputs_encoded = self.tokenizer(
+            text=inputs,
+            text_target=targets,
+            return_tensors='pt',
+            padding=True,
+            truncation=True,
+        )
 
-        inputs_dict = {
-            'input_ids': inputs_encoded['input_ids'],
-            'attention_mask': inputs_encoded['attention_mask'],
-            'labels': inputs_encoded['input_ids'].clone()
-        }
-        targets_dict = {
-            'input_ids': targets_encoded['input_ids'],
-        }
+        return inputs_encoded.to(self.device)
 
-        return inputs_dict, targets_dict
+    def validation(self, batch):
+        inputs_encoded = self.__call__(batch)
+        references = [entry['references'] for entry in batch if 'references' in entry]
+        return inputs_encoded, references
+
+
+# debugging and testing
+if __name__ == '__main__':
+    ds = load_dataset('GEM/e2e_nlg', split='validation')
+    for i in range(5):
+        print(ds[i])
