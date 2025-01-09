@@ -75,9 +75,13 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
     optimizer = torch.optim.AdamW(model.parameters(), **optimizer_cfg)
 
     summarize_model(model, dataloader=train_loader, device=device)
-    evaluate_nlg(model, val_loader, tokenizer)
 
     print(f"\nTraining for {num_epochs} epochs...")
+
+    if run is not None:
+        artifact = wandb.Artifact(model_cfg['name']+"-lora", type="model")
+        artifact.add_dir("checkpoint")
+        run.log_artifact(artifact)
 
     for epoch in range(num_epochs):
         model.train()
@@ -109,11 +113,15 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
 
         model.save_pretrained("checkpoint")
 
-        wandb.log({
-            'epoch': epoch + 1,
-            'loss': avg_loss,
-            'validation_metrics': metrics
-        })
+        if run is not None:
+            wandb.log({
+                'epoch': epoch + 1,
+                'loss': avg_loss,
+                'validation_metrics': metrics
+            })
+            artifact = wandb.Artifact(model_cfg['name']+"-lora", type="model")
+            artifact.add_dir("checkpoint")
+            run.log_artifact(artifact)
 
     print("\nTraining completed!")
 
