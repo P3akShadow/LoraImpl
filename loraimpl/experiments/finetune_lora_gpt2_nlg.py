@@ -66,7 +66,10 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
 
     if cont:  # Load model from checkpoint
         if run is not None:
-            run.restore('checkpoint')
+            run.restore('checkpoint/config.json')
+            run.restore('checkpoint/generation_config.json')
+            run.restore('checkpoint/model.safetensors.json')
+            run.restore('checkpoint/optimizer.pt')
         model = GPT2LMHeadModelLora.from_pretrained("checkpoint", local_files_only=True)
         optimizer = torch.optim.AdamW(model.parameters(), **optimizer_cfg)
         optimizer.load_state_dict(torch.load("checkpoint/optimizer.pt"))
@@ -97,7 +100,7 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
             'epoch': 0,
             'validation_metrics': metrics
         })
-        run.save('checkpoint', policy='live')
+        run.save('checkpoint/*', policy='live')
 
     for epoch in range(num_epochs):
         model.train()
