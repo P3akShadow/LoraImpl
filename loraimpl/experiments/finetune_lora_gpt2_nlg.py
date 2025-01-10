@@ -46,7 +46,7 @@ def main():
     }
 
     wandb_kwargs = {
-        'project': 'lora',
+        'project': 'lora-team',
         'config': config,
     }
     if len(sys.argv) > 1:  # Continue existing run?
