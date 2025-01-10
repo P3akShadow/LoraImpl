@@ -46,7 +46,7 @@ def main():
     }
 
     wandb_kwargs = {
-        'project': 'lora-team',
+        'project': 'lora',
         'config': config,
     }
     if len(sys.argv) > 1:  # Continue existing run?
@@ -68,23 +68,22 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
         if run is not None:
             run.restore('checkpoint')
         model = GPT2LMHeadModelLora.from_pretrained("checkpoint", local_files_only=True)
+        optimizer = torch.optim.AdamW(model.parameters(), **optimizer_cfg)
+        optimizer.load_state_dict(torch.load("checkpoint/optimizer.pt"))
     else:  # Initialize model with LoRA only training (no biases or layer norms)
         model = GPT2LMHeadModelLora.from_pretrained(model_cfg['name'], **model_cfg['kwargs'])
+        optimizer = torch.optim.AdamW(model.parameters(), **optimizer_cfg)
 
     model.to(device)
-    model.train()  # Ensure model starts in training mode
-
-    train_dataset = load_dataset(dataset_cfg['name'], split='train')
-    val_dataset = load_dataset(dataset_cfg['name'], split='validation')
 
     tokenizer = GPT2TokenizerFast.from_pretrained(model_cfg['name'], **tokenizer_cfg)
 
     collate_fn = CollateFunction(tokenizer)
 
+    train_dataset = load_dataset(dataset_cfg['name'], split='train')
+    val_dataset = load_dataset(dataset_cfg['name'], split='validation')
     train_loader = torch.utils.data.DataLoader(train_dataset, collate_fn=collate_fn, shuffle=True, **loader_cfg)
     val_loader = torch.utils.data.DataLoader(val_dataset, collate_fn=collate_fn.validation, shuffle=False, **loader_cfg)
-
-    optimizer = torch.optim.AdamW(model.parameters(), **optimizer_cfg)
 
     summarize_model(model, dataloader=train_loader, device=device)
 
@@ -128,6 +127,7 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
             print(f'{k}: {v:.4f}')
 
         model.save_pretrained('checkpoint')
+        torch.save(optimizer.state_dict(), 'checkpoint/optimizer.pt')
 
         if run is not None:
             run.log({
