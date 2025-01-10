@@ -140,7 +140,6 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
                 'loss': avg_loss,
                 'validation_metrics': metrics
             })
-            run.save('checkpoint')
 
     print('\nTraining completed!')
 
