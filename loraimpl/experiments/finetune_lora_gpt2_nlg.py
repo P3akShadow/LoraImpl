@@ -52,7 +52,7 @@ def main():
     if len(sys.argv) > 1:  # Continue existing run?
         wandb_kwargs['id'] = sys.argv[1]
     with wandb.init(**wandb_kwargs) as run:  # Log configuration to Weights & Biases and run experiment
-        run_experiment(**config, run=run, cont='id' in wandb_kwargs)
+        run_experiment(**config, run=run, cont=run.resumed)
     # run_experiment(**config)
 
 def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg, tokenizer_cfg, seed=None, run=None, cont=False):
@@ -73,9 +73,11 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
         model = GPT2LMHeadModelLora.from_pretrained("checkpoint", local_files_only=True)
         optimizer = torch.optim.AdamW(model.parameters(), **optimizer_cfg)
         optimizer.load_state_dict(torch.load("checkpoint/optimizer.pt"))
+        start_epoch = run.summary['epoch']
     else:  # Initialize model with LoRA only training (no biases or layer norms)
         model = GPT2LMHeadModelLora.from_pretrained(model_cfg['name'], **model_cfg['kwargs'])
         optimizer = torch.optim.AdamW(model.parameters(), **optimizer_cfg)
+        start_epoch = 0
 
     model.to(device)
 
@@ -95,14 +97,14 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
 
     print(f'\nTraining for {num_epochs} epochs...')
 
-    if run is not None:
+    if not cont and run is not None:
         wandb.log({
             'epoch': 0,
             'validation_metrics': metrics
         })
         run.save('checkpoint/*', policy='live')
 
-    for epoch in range(num_epochs):
+    for epoch in range(start_epoch, num_epochs):
         model.train()
         total_loss = 0
 
