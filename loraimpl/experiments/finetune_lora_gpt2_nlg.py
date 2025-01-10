@@ -66,10 +66,12 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
 
     if cont:  # Load model from checkpoint
         if run is not None:
+            print('Restoring checkpoint...')
             run.restore('checkpoint/config.json')
             run.restore('checkpoint/generation_config.json')
             run.restore('checkpoint/model.safetensors.json')
             run.restore('checkpoint/optimizer.pt')
+        print('Loading model from checkpoint...')
         model = GPT2LMHeadModelLora.from_pretrained("checkpoint", local_files_only=True)
         optimizer = torch.optim.AdamW(model.parameters(), **optimizer_cfg)
         optimizer.load_state_dict(torch.load("checkpoint/optimizer.pt"))
@@ -92,17 +94,16 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
 
     summarize_model(model, dataloader=train_loader, device=device)
 
-    print('\nEvaluating before training...')
-    metrics = evaluate_nlg(model, val_loader, tokenizer, device)
-
-    print(f'\nTraining for {num_epochs} epochs...')
-
     if not cont and run is not None:
+        print('\nEvaluating before training...')
+        metrics = evaluate_nlg(model, val_loader, tokenizer, device)
         wandb.log({
             'epoch': 0,
             'validation_metrics': metrics
         })
         run.save('checkpoint/*', policy='live')
+
+    print(f'\nTraining for {num_epochs} epochs...')
 
     for epoch in range(start_epoch, num_epochs):
         model.train()
