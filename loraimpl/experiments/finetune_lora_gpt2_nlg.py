@@ -103,7 +103,6 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
             'epoch': 0,
             'validation_metrics': metrics
         })
-        run.save('checkpoint/*', policy='live')
 
     print(f'\nTraining for {num_epochs} epochs...')
 
@@ -143,6 +142,7 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
                 'loss': avg_loss,
                 'validation_metrics': metrics
             })
+            run.save('checkpoint/*', policy='live')
 
     print('\nTraining completed!')
 
