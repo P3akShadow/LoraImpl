@@ -105,17 +105,7 @@ def evaluate_nlg(model, eval_loader, tokenizer, device):
         batch_metrics = dict()
 
         # we won't heavily tune generation here
-        outputs = model.generate(
-            **batch,
-            # max_new_tokens=50,
-            # do_sample=True,
-            # top_p=0.85,
-            # temperature=0.6,
-            # num_beams=5,
-            # repetition_penalty=1.5,
-            # no_repeat_ngram_size=3,
-            early_stopping=True,
-        )
+        outputs = model.generate(**batch, pad_token_id=tokenizer.eos_token_id)
 
         outputs = outputs[:, batch['input_ids'].shape[1]:]
 
