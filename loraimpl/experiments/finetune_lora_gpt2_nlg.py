@@ -51,6 +51,8 @@ def main():
     }
     if len(sys.argv) > 1:  # Continue existing run?
         wandb_kwargs['id'] = sys.argv[1]
+        wandb_kwargs['resume'] = 'must'
+        print(f'Trying to resume run {sys.argv[1]}...')
     with wandb.init(**wandb_kwargs) as run:  # Log configuration to Weights & Biases and run experiment
         run_experiment(**config, run=run, cont=run.resumed)
     # run_experiment(**config)
