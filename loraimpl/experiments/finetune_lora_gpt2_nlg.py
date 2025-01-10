@@ -74,16 +74,17 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
             run.restore('checkpoint/model.safetensors', replace=True)
             run.restore('checkpoint/optimizer.pt', replace=True)
         print('Loading model from checkpoint...')
-        model = GPT2LMHeadModelLora.from_pretrained("checkpoint", local_files_only=True)
+        model = GPT2LMHeadModelLora.from_pretrained("checkpoint", local_files_only=True, **model_cfg['kwargs'])
+        model.to(device)
         optimizer = torch.optim.AdamW(model.parameters(), **optimizer_cfg)
-        optimizer.load_state_dict(torch.load("checkpoint/optimizer.pt"))
+        optimizer.load_state_dict(torch.load("checkpoint/optimizer.pt", map_location=device, weights_only=False))
         start_epoch = run.summary['epoch']
     else:  # Initialize model with LoRA only training (no biases or layer norms)
         model = GPT2LMHeadModelLora.from_pretrained(model_cfg['name'], **model_cfg['kwargs'])
+        model.to(device)
         optimizer = torch.optim.AdamW(model.parameters(), **optimizer_cfg)
         start_epoch = 0
 
-    model.to(device)
 
     tokenizer = GPT2TokenizerFast.from_pretrained(model_cfg['name'], **tokenizer_cfg)
 
@@ -142,7 +143,7 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
                 'loss': avg_loss,
                 'validation_metrics': metrics
             })
-            run.save('checkpoint/*', policy='live')
+            run.save('checkpoint/*', policy='now')
 
     print('\nTraining completed!')
 
