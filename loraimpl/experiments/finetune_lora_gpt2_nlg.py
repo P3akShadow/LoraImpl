@@ -71,7 +71,7 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
             print('Restoring checkpoint...')
             run.restore('checkpoint/config.json', replace=True)
             run.restore('checkpoint/generation_config.json', replace=True)
-            run.restore('checkpoint/model.safetensors.json', replace=True)
+            run.restore('checkpoint/model.safetensors', replace=True)
             run.restore('checkpoint/optimizer.pt', replace=True)
         print('Loading model from checkpoint...')
         model = GPT2LMHeadModelLora.from_pretrained("checkpoint", local_files_only=True)
