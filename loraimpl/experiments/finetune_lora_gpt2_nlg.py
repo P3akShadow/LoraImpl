@@ -46,6 +46,7 @@ def main():
     }
 
     wandb_kwargs = {
+        'entity': 'maximiliansuess',
         'project': 'lora',
         'config': config,
     }
@@ -55,7 +56,6 @@ def main():
         print(f'Trying to resume run {sys.argv[1]}...')
     with wandb.init(**wandb_kwargs) as run:  # Log configuration to Weights & Biases and run experiment
         run_experiment(**config, run=run, cont=run.resumed)
-    # run_experiment(**config)
 
 def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg, tokenizer_cfg, seed=None, run=None, cont=False):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
