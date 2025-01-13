@@ -269,8 +269,6 @@ class FinetuneWrapperRoberta(nn.Module):
                 # Compare keys of both state dicts
                 keys_old = set(state_dict_old.keys())
                 keys_new = set(k for k in state_dict_new.keys() if not k.startswith("ft_"))
-                print(keys_old)
-                print(keys_new)
                 assert keys_old == keys_new, f"Keys of the state dictionaries don't match (ignoring lora parameters):\n\tExpected Parameters: {keys_old}\n\tNew Parameters (w.o. LoRA): {keys_new}"
 
                 # Replace the original layer with the new layer
@@ -282,8 +280,8 @@ class FinetuneWrapperRoberta(nn.Module):
 
     def freeze_parameters_except_finetune_and_bias(self):
         """
-        Freezes all parameters in the model, except those in LoRA layers, the finetune head, and bias parameters, if specified.
-        All lora parameters are identified by having a name that starts with *lora_*.
+        Freezes all parameters in the model, except those in Finetune layers, the finetune head, and bias parameters, if specified.
+        All finetune parameters are identified by having a name that starts with *ft*.
         All finetune head parameters are identified by having a name that starts with *finetune_head_*.
         """
         for name, param in self.model.named_parameters():
