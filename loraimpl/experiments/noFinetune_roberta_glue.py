@@ -4,7 +4,7 @@ from transformers import RobertaTokenizer
 import wandb
 
 from loraimpl.data.glue import GLUEDataset
-from loraimpl.models.bareFinetuning_roberta import FinetuneWrapperRoberta
+from loraimpl.models.noFinetuning_roberta import WrapperRoberta
 from loraimpl.utils.helper import train_epoch, evaluate_glue, summarize_model
 
 
@@ -82,7 +82,7 @@ def run_experiment(model_name, model_config, train_loader_config, val_loader_con
     eval_loader = torch.utils.data.DataLoader(eval_dataset, **val_loader_config)
 
     # Initialize model
-    model = FinetuneWrapperRoberta(num_classes=train_dataset.num_labels, **model_config)
+    model = WrapperRoberta(num_classes=train_dataset.num_labels, **model_config)
     model.to(device)
 
     # Initialize optimizer and loss function

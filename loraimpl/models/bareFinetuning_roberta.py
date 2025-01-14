@@ -365,7 +365,7 @@ class FinetuneWrapperRoberta(nn.Module):
         # return the start and end logits
         return start_logits, end_logits, na_prob_logits
 
-    def save_lora_state_dict(self, lora_filepath: Optional[Union[str, Path]] = None) -> Optional[Dict]:
+    def save_state_dict(self, filepath: Optional[Union[str, Path]] = None) -> Optional[Dict]:
         """
         Save the trainable parameters of the model into a state dict.
         If a file path is provided, it saves the state dict to that file.
@@ -373,7 +373,7 @@ class FinetuneWrapperRoberta(nn.Module):
 
         Parameters
         ----------
-        lora_filepath : Union[str, Path], optional
+        filepath : Union[str, Path], optional
             The file path where to save the state dict. Can be a string or a pathlib.Path. If not provided, the function
             simply returns the state dict without saving it to a file.
 
@@ -389,22 +389,21 @@ class FinetuneWrapperRoberta(nn.Module):
         # add addional parameters to state dict
         state_dict['model_id'] = self.model_id
         state_dict['task_type'] = self.task_type
-        state_dict['lora_rank'] = self.lora_rank
         state_dict['num_classes'] = self.num_classes
 
-        if lora_filepath is not None:
+        if filepath is not None:
             # Convert string to pathlib.Path if necessary
-            if isinstance(lora_filepath, str):
-                lora_filepath = Path(lora_filepath)
+            if isinstance(filepath, str):
+                filepath = Path(filepath)
 
             # Save the state dict to the specified file
-            torch.save(state_dict, lora_filepath)
+            torch.save(state_dict, filepath)
         else:
             # Return the state dict if no file path was provided
             return state_dict
 
     @staticmethod
-    def load_lora_state_dict(lora_parameters: Union[str, Path, Dict] = None):
+    def load_state_dict(parameters: Union[str, Path, Dict] = None):
         """
         Load a state dict into the model from a specified file path or a state dict directly.
         This is a staticmethod to be used from the base clase, returning a fully initialized and LoRA loaded model.
@@ -421,10 +420,10 @@ class FinetuneWrapperRoberta(nn.Module):
         LoraWrapperRoberta object, initialized and with the LoRA weights loaded.
         """
         # Check if a filepath or state dict was provided
-        if lora_parameters is not None:
+        if parameters is not None:
             # Convert string to pathlib.Path if necessary
-            if isinstance(lora_parameters, str):
-                lora_parameters = Path(lora_parameters)
+            if isinstance(parameters, str):
+                lora_parameters = Path(parameters)
 
             # If the provided object is a Path, load the state dict from file
             if isinstance(lora_parameters, Path):
@@ -435,8 +434,8 @@ class FinetuneWrapperRoberta(nn.Module):
         else:
             raise ValueError("No filepath or state dict provided")
 
-        instance = LoraWrapperRoberta(task_type=state_dict['task_type'], num_classes=state_dict['num_classes'],
-                                      model_id=state_dict['model_id'], lora_rank=state_dict['lora_rank'])
+        instance = FinetuneWrapperRoberta(task_type=state_dict['task_type'], num_classes=state_dict['num_classes'],
+                                      model_id=state_dict['model_id'])
 
         # Load the state dict into the model
         instance.load_state_dict(state_dict, strict=False)
