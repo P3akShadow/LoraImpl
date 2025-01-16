@@ -464,7 +464,7 @@ def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
-def format_with_underscore(n):
+def format_with_underscoren:
     """Mini helper function to format a number with underscore as thousand separator"""
     return f"{n:_}"
 
