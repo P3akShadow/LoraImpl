@@ -14,7 +14,7 @@ from transformers.models.roberta.modeling_roberta import RobertaSelfAttention
 
 class WrapperRoberta(nn.Module):
     def __init__(self, task_type, num_classes: int = None, dropout_rate=0.1, model_id: str = "roberta-base",
-                 train_biases: bool = True, train_embedding: bool = False, train_layer_norms: bool = True):
+                 train_biases: bool = True, train_embedding: bool = False, train_layer_norms: bool = True, hidden_dim=100):
         """
         Initializes a WrapperRoberta instance, which is a wrapper around the RoBERTa model incorporating
         to retrain the model for different NLP tasks such as GLUE benchmarks
@@ -78,10 +78,12 @@ class WrapperRoberta(nn.Module):
         self.num_classes = num_classes
         self.task_type = task_type.lower()
 
-        # Define the additional norm, linear layer, and dropout
+        # Define the additional norm, linear layer, hidden layer, and dropout
         self.finetune_head_norm = nn.LayerNorm(d_model)
         self.finetune_head_dropout = nn.Dropout(dropout_rate)
-        self.finetune_head_classifier = nn.Linear(d_model, num_classes)
+        self.finetune_head_hidden = nn.Linear(d_model, hidden_dim)
+        self.finetune_head_hidden_dropout = nn.Dropout(dropout_rate)
+        self.finetune_head_classifier = nn.Linear(hidden_dim, num_classes)
 
         # 3. set up the model for training in Benchmark task:
         self.freeze_parameters_except_finetune()
@@ -117,6 +119,8 @@ class WrapperRoberta(nn.Module):
 
         x = self.finetune_head_norm(x)
         x = self.finetune_head_dropout(x)
+        x = self.finetune_head_hidden(x)
+        x = self.finetune_head_hidden_dropout(x)
         x = self.finetune_head_classifier(x)
 
         if self.num_classes == 1:  # If it's a regression task
@@ -131,10 +135,13 @@ class WrapperRoberta(nn.Module):
         x = outputs.last_hidden_state
         # Full sequence is kept as a score
 
-        # Pass the base model output through dropout -> linear layer -> norm
+        # Pass the base model output through dropout -> linear layer -> hidden layer -> norm
         x = self.finetune_head_norm(x)
         x = self.finetune_head_dropout(x)
+        x = self.finetune_head_hidden(x)
+        x = self.finetune_head_hidden_dropout(x)
         x = self.finetune_head_classifier(x)
+
 
         start_logits, end_logits = x.split(1, dim=-1)  # split the two output values
 
@@ -152,10 +159,13 @@ class WrapperRoberta(nn.Module):
         x = outputs.last_hidden_state
         # Full sequence is kept as a score
 
-        # Pass the base model output through dropout -> linear layer -> norm
+        # Pass the base model output through dropout -> linear layer -> hidden layer -> norm
         x = self.finetune_head_norm(x)
         x = self.finetune_head_dropout(x)
+        x = self.finetune_head_hidden(x)
+        x = self.finetune_head_hidden_dropout(x)
         x = self.finetune_head_classifier(x)
+
 
         start_logits, end_logits, na_prob_logits = x.split(1, dim=-1)  # split the two output values
 

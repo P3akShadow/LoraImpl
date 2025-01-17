@@ -150,7 +150,7 @@ class FinetuneRoberta(RobertaSelfAttention):
 
 class FinetuneWrapperRoberta(nn.Module):
     def __init__(self, task_type, num_classes: int = None, dropout_rate=0.1, model_id: str = "roberta-base",
-                 train_biases: bool = True, train_embedding: bool = False, train_layer_norms: bool = True):
+                 train_biases: bool = True, train_embedding: bool = False, train_layer_norms: bool = True, hidden_dim = 100):
         """
         Initializes a FinetuneWrapperRoberta instance, which is a wrapper around the RoBERTa model incorporating
         Finetuning to retrain the model for different NLP tasks such as GLUE benchmarks
@@ -217,7 +217,9 @@ class FinetuneWrapperRoberta(nn.Module):
         # Define the additional norm, linear layer, and dropout
         self.finetune_head_norm = nn.LayerNorm(d_model)
         self.finetune_head_dropout = nn.Dropout(dropout_rate)
-        self.finetune_head_classifier = nn.Linear(d_model, num_classes)
+        self.finetune_head_hidden = nn.Linear(d_model, hidden_dim)
+        self.finetune_head_hidden_dropout = nn.Dropout(dropout_rate)
+        self.finetune_head_classifier = nn.Linear(hidden_dim, num_classes)
 
         # 3. set up the lora model for training in Benchmark task:
         self.replace_multihead_attention()
@@ -312,6 +314,8 @@ class FinetuneWrapperRoberta(nn.Module):
 
         x = self.finetune_head_norm(x)
         x = self.finetune_head_dropout(x)
+        x = self.finetune_head_hidden(x)
+        x = self.finetune_head_hidden_dropout(x)
         x = self.finetune_head_classifier(x)
 
         if self.num_classes == 1:  # If it's a regression task
@@ -326,9 +330,11 @@ class FinetuneWrapperRoberta(nn.Module):
         x = outputs.last_hidden_state
         # Full sequence is kept as a score
 
-        # Pass the base model output through dropout -> linear layer -> norm
+        # Pass the base model output through dropout -> linear layer -> hidden layer -> norm
         x = self.finetune_head_norm(x)
         x = self.finetune_head_dropout(x)
+        x = self.finetune_head_hidden(x)
+        x = self.finetune_head_hidden_dropout(x)
         x = self.finetune_head_classifier(x)
 
         start_logits, end_logits = x.split(1, dim=-1)  # split the two output values
@@ -347,9 +353,11 @@ class FinetuneWrapperRoberta(nn.Module):
         x = outputs.last_hidden_state
         # Full sequence is kept as a score
 
-        # Pass the base model output through dropout -> linear layer -> norm
+        # Pass the base model output through dropout -> linear layer -> hidden layer -> norm
         x = self.finetune_head_norm(x)
         x = self.finetune_head_dropout(x)
+        x = self.finetune_head_hidden(x)
+        x = self.finetune_head_hidden_dropout(x)
         x = self.finetune_head_classifier(x)
 
         start_logits, end_logits, na_prob_logits = x.split(1, dim=-1)  # split the two output values
@@ -464,7 +472,7 @@ def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
-def format_with_underscoren:
+def format_with_underscore(n):
     """Mini helper function to format a number with underscore as thousand separator"""
     return f"{n:_}"
 
