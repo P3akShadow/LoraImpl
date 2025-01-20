@@ -111,7 +111,7 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
 
     summarize_model(model, dataloader=train_loader, device=device)
 
-    if run is None or not run.resumed:
+    if run is not None and not run.resumed:
         print('\nEvaluating before training...')
         metrics = evaluate_nlg(model, val_loader, tokenizer, device, inference_cfg)
         wandb.log({
