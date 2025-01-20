@@ -65,7 +65,7 @@ def main():
 
     #run experiments in loop
     for lora_rank in [1,2,4,8,16]:
-        for task in ["cola", "sst2"]:
+        for task in ["stsb", "cola", "sst2"]:
             config["model_config"]["lora_rank"] = lora_rank
             config["train_dataset_config"]["task_name"] = task
             config["val_dataset_config"]["task_name"] = task
@@ -128,7 +128,13 @@ def run_experiment(model_name, model_config, train_loader_config, val_loader_con
             print(f"{k}: {v:.4f}")
 
         # Save best model
-        current_metric = eval_metrics['accuracy'] if 'accuracy' in eval_metrics else eval_metrics['mcc']
+        current_metric = {}
+        if 'accuracy' in eval_metrics:
+            current_metric = eval_metrics['accuracy']
+        elif 'mcc' in eval_metrics:
+            current_metric = eval_metrics['mcc']
+        elif 'pearson' in eval_metrics:
+            current_metric = eval_metrics['pearson']
         if current_metric > best_metric:
             best_metric = current_metric
             model.save_lora_state_dict(f'lora_weights_{task_name}_best.pt')
