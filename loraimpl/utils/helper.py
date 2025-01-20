@@ -176,21 +176,10 @@ def evaluate_nlg(model, eval_loader, tokenizer, device):
     bleu = evaluate.load('bleu')
     rouge = evaluate.load('rouge')
     meteor = evaluate.load('meteor')
-    
-    import nltk
-    from nltk.translate.nist_score import corpus_nist
-    try:
-        nltk.data.find('tokenizers/punkt')
-    except LookupError:
-        nltk.download('punkt')
-    
+    nist = evaluate.load('nist_mt')
+    cider = evaluate.load('Kamichanw/CIDEr')
     metrics = dict()
     n_batches = len(eval_loader)
-    
-    all_predictions = []
-    all_references = []
-    raw_predictions = []
-    raw_references = []
     
     for batch, references in tqdm(eval_loader, desc='Evaluating'):
         batch = {k: v.to(device) for k, v in batch.items()}
@@ -203,13 +192,9 @@ def evaluate_nlg(model, eval_loader, tokenizer, device):
         batch_metrics |= bleu.compute(predictions=predictions, references=references)
         batch_metrics |= rouge.compute(predictions=predictions, references=references)
         batch_metrics |= meteor.compute(predictions=predictions, references=references)
-        
-        all_predictions.extend([nltk.word_tokenize(pred.lower()) for pred in predictions])
-        all_references.extend([[nltk.word_tokenize(ref.lower()) for ref in refs] for refs in references])
-        
-        raw_predictions.extend([pred.strip() for pred in predictions])
-        raw_references.extend([refs for refs in references])
-        
+        batch_metrics |= nist.compute(predictions=predictions, references=references)
+        batch_metrics |= cider.compute(predictions=predictions, references=references)
+
         for key, value in batch_metrics.items():
             if not isinstance(value, numbers.Number):
                 continue
@@ -217,18 +202,6 @@ def evaluate_nlg(model, eval_loader, tokenizer, device):
                 metrics[key] = value / n_batches
             else:
                 metrics[key] += value / n_batches
-    
-    try:
-        nist_score = corpus_nist(all_references, all_predictions, n=4)
-        metrics['nist'] = nist_score
-    except Exception as e:
-        metrics['nist'] = 0.0
-    
-    try:
-        cider_score = compute_cider(raw_predictions, raw_references)
-        metrics['cider'] = cider_score
-    except Exception:
-        metrics['cider'] = 0.0
     
     return metrics
     
