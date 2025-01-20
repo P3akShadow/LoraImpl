@@ -10,65 +10,52 @@ from loraimpl.utils.helper import evaluate_nlg
 
 def main():
     # Configuration
-    num_epochs = 10
-    model_config = {
-        'model_id': 'gpt2',
-        'lora_rank': 32,
-        'lora_alpha': 64,
-        'train_biases': False,
-        'train_layer_norms': False
-    }
-    train_dataset_config = {
-        'split': 'train',
-        'max_length': 128
-    }
-    val_dataset_config = {
-        'split': 'validation',
-        'max_length': 128
-    }
-    train_loader_config = {
-        'batch_size': 8,
-        'shuffle': True,
-        'num_workers': 4,
-        'pin_memory': True
-    }
-    val_loader_config = {
-        'batch_size': 8,
-        'shuffle': False,
-        'num_workers': 4,
-        'pin_memory': True
-    }
-    optimizer_config = {
-        'lr': 2e-5,
-        'weight_decay': 0.01,
-        'betas': (0.9, 0.999),
-        'eps': 1e-8
+    config = {
+        'num_epochs': 20,
+        'model_cfg': {
+            'name': 'gpt2',
+            'kwargs': {  # LoRA hyperparameters from the paper
+                'lora_rank': 32,
+                'lora_alpha': 64,
+                'train_biases': False,
+                'train_layer_norms': False
+            }
+        },
+        'dataset_cfg': {
+            'name': 'GEM/e2e_nlg',
+            'max_length': 128
+        },
+        'loader_cfg': {
+            'batch_size': 8,
+            'num_workers': 4,
+        },
+        'optimizer_cfg': {
+            'lr': 2e-5,
+            'weight_decay': 0.01,
+            'betas': (0.9, 0.999),
+            'eps': 1e-8
+        },
+        'tokenizer_cfg': {
+            'padding_side': 'left',
+        },
+        'seed': 42
     }
 
     # Log configuration to Weights & Biases and run experiment
-    config = {
-        'num_epochs': num_epochs,
-        'model_config': model_config,
-        'train_dataset_config': train_dataset_config,
-        'val_dataset_config': val_dataset_config,
-        'train_loader_config': train_loader_config,
-        'val_loader_config': val_loader_config,
-        'optimizer_config': optimizer_config
-    }
     wandb.init(project="lora", config=config)
     run_experiment(**config)
 
-def run_experiment(model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config):
+def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg, tokenizer_cfg, seed=None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     print(f"Using device: {device}")
 
-    torch.manual_seed(42)
+    torch.manual_seed(seed=seed)
     if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(42)
+        torch.cuda.manual_seed_all(seed=seed)
 
     # Initialize model with LoRA only training (no biases or layer norms)
-    model = LoraWrapperGPT2NLG(**model_config)
+    model = LoraWrapperGPT2NLG(**model_cfg['kwargs'])
     model.to(device)
     model.train()  # Ensure model starts in training mode
 
@@ -76,18 +63,18 @@ def run_experiment(model_config, train_loader_config, val_loader_config, train_d
     print("\nVerifying parameters before training starts:")
     initial_stats = verify_parameters(model)
 
-    train_dataset = NLGDataset(**train_dataset_config)
-    val_dataset = NLGDataset(**val_dataset_config)
+    train_dataset = NLGDataset(**dataset_cfg, split='train')
+    val_dataset = NLGDataset(**dataset_cfg, split='validation')
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, **train_loader_config)
-    val_loader = torch.utils.data.DataLoader(val_dataset, **val_loader_config)
+    train_loader = torch.utils.data.DataLoader(train_dataset, **loader_cfg, shuffle=True)
+    val_loader = torch.utils.data.DataLoader(val_dataset, **loader_cfg, shuffle=False)
 
     # Only optimize trainable parameters
     trainable_params = [p for p in model.parameters() if p.requires_grad]
     if not trainable_params:
         raise ValueError("No trainable parameters found!")
 
-    optimizer = torch.optim.AdamW(trainable_params, **optimizer_config)
+    optimizer = torch.optim.AdamW(trainable_params, **optimizer_cfg)
 
     num_training_steps = len(train_loader) * 10
     scheduler = get_scheduler(
@@ -98,9 +85,6 @@ def run_experiment(model_config, train_loader_config, val_loader_config, train_d
     )
 
     scaler = torch.cuda.amp.GradScaler()
-    best_bleu = 0
-    patience = 3
-    no_improve = 0
 
     print("\nStarting training...")
     for epoch in range(num_epochs):
@@ -169,24 +153,6 @@ def run_experiment(model_config, train_loader_config, val_loader_config, train_d
         print("\nValidation metrics:")
         for k, v in metrics.items():
             print(f"{k}: {v:.4f}")
-
-        if metrics['bleu'] > best_bleu:
-            best_bleu = metrics['bleu']
-            torch.save({
-                'epoch': epoch,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'scheduler_state_dict': scheduler.state_dict(),
-                'loss': avg_loss,
-                'best_bleu': best_bleu,
-            }, 'best_model.pt')
-            print(f"\nSaved new best model with BLEU score: {best_bleu:.4f}")
-            no_improve = 0
-        else:
-            no_improve += 1
-            if no_improve >= patience:
-                print("\nEarly stopping triggered!")
-                break
 
         wandb.log({
             'epoch': epoch + 1,
