@@ -7,10 +7,11 @@ from loraimpl.data.glue import GLUEDataset
 from loraimpl.models.lora_roberta import LoraWrapperRoberta
 from loraimpl.utils.helper import train_epoch, evaluate_glue, summarize_model
 
+import random as rnd
 
 def main():
     # Configuration
-    num_epochs = 10
+    num_epochs = 1
     model_name = 'roberta-base'
     model_config = {
         'task_type': 'glue',
@@ -61,8 +62,24 @@ def main():
         'optimizer_config': optimizer_config,
         'seed': seed,
     }
+
+    #run experiments in loop
+    for lora_rank in [1,2,4,8,16]:
+        for task in ["cola", "sst2"]:
+            config["model_config"]["lora_rank"] = lora_rank
+            config["train_dataset_config"]["task_name"] = task
+            config["val_dataset_config"]["task_name"] = task
+
+            wandb_name = f"finetune_lora_roberta_{lora_rank}_{task}_{rnd.randrange(1000)}"
+            wandb.init(project="lora", config=config, name=wandb_name)
+            run_experiment(**config)
+            wandb.finish()
+
+    
     wandb.init(project="lora", config=config)
     run_experiment(**config)
+
+
 
 
 def run_experiment(model_name, model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config, seed=None, **kwargs):
