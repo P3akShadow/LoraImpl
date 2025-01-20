@@ -1,12 +1,15 @@
 import numbers
 
 import torch
-import numpy as np
 import scipy
 from tqdm import tqdm
 from sklearn.metrics import matthews_corrcoef, f1_score, accuracy_score
 import evaluate
 import torchinfo
+import nltk
+from collections import Counter
+import numpy as np
+import math
 
 
 def compute_metrics(task_name, preds, labels):
@@ -90,55 +93,51 @@ def evaluate_glue(model, eval_loader, criterion, device, task_name):
     return metrics
 
 
-def compute_cider(predictions, references):
+class CIDEr:
     """
     Custom CIDEr implementation
     """
-    import nltk
-    from collections import Counter
-    import numpy as np
-    import math
-    
-    try:
-        nltk.data.find('tokenizers/punkt')
-    except LookupError:
-        nltk.download('punkt')
-    
+
+    @staticmethod
     def preprocess_text(text):
         return nltk.word_tokenize(text.lower().strip())
-    
+
+    @staticmethod
     def compute_ngrams(words, n):
         return [tuple(words[i:i+n]) for i in range(len(words)-n+1)]
-    
-    def compute_tf(words, n):
-        ngrams = compute_ngrams(words, n)
+
+    @classmethod
+    def compute_tf(cls, words, n):
+        ngrams = cls.compute_ngrams(words, n)
         counter = Counter(ngrams)
         total = sum(counter.values())
         return {gram: count/total for gram, count in counter.items()} if total > 0 else counter
-    
-    def compute_idf(all_refs, n):
+
+    @classmethod
+    def compute_idf(cls, all_refs, n):
         doc_count = Counter()
         total_docs = len(all_refs)
         
         for refs in all_refs:
             seen_grams = set()
             for ref in refs:
-                words = preprocess_text(ref)
-                ngrams = compute_ngrams(words, n)
+                words = cls.preprocess_text(ref)
+                ngrams = cls.compute_ngrams(words, n)
                 seen_grams.update(ngrams)
             doc_count.update(seen_grams)
         
         idf_dict = {gram: math.log(total_docs/(count + 1)) for gram, count in doc_count.items()}
         return idf_dict
-    
-    def compute_cider_score(pred, refs, n, idf):
-        pred_words = preprocess_text(pred)
-        pred_tf = compute_tf(pred_words, n)
+
+    @classmethod
+    def compute_cider_score(cls, pred, refs, n, idf):
+        pred_words = cls.preprocess_text(pred)
+        pred_tf = cls.compute_tf(pred_words, n)
         
         scores = []
         for ref in refs:
-            ref_words = preprocess_text(ref)
-            ref_tf = compute_tf(ref_words, n)
+            ref_words = cls.preprocess_text(ref)
+            ref_tf = cls.compute_tf(ref_words, n)
             
             common_grams = set(pred_tf.keys()) & set(ref_tf.keys())
             
@@ -156,20 +155,29 @@ def compute_cider(predictions, references):
         
         return max(scores) if scores else 0
 
-    if not predictions or not references or len(predictions) != len(references):
-        return 0.0
+    @classmethod
+    def compute(cls, predictions, references):
+        try:
+            nltk.data.find('tokenizers/punkt')
+        except LookupError:
+            nltk.download('punkt')
 
-    n_values = range(1, 5)
-    weights = [1/4] * 4
-    
-    scores = []
-    for n in n_values:
-        idf = compute_idf(references, n)
-        score = np.mean([compute_cider_score(pred, refs, n, idf) 
-                        for pred, refs in zip(predictions, references)])
-        scores.append(score)
-    
-    return sum(w * s for w, s in zip(weights, scores))
+        # take only first reference. #TODO: @Morgan, if you've got the time, please fix the implementation for multiple references
+        references = [[ref[0]] for ref in references]
+        if not predictions or not references or len(predictions) != len(references):
+            return 0.0
+
+        n_values = range(1, 5)
+        weights = [1/4] * 4
+
+        scores = []
+        for n in n_values:
+            idf = cls.compute_idf(references, n)
+            score = np.mean([cls.compute_cider_score(pred, refs, n, idf)
+                            for pred, refs in zip(predictions, references)])
+            scores.append(score)
+
+        return {'cider': sum(w * s for w, s in zip(weights, scores))}
 
 def evaluate_nlg(model, eval_loader, tokenizer, device, inference_cfg):
     model.eval()
@@ -177,7 +185,7 @@ def evaluate_nlg(model, eval_loader, tokenizer, device, inference_cfg):
     rouge = evaluate.load('rouge')
     meteor = evaluate.load('meteor')
     nist = evaluate.load('nist_mt')
-    cider = evaluate.load('Kamichanw/CIDEr')
+    cider = CIDEr()  # Morgans custom CIDEr implementation
     metrics = dict()
     n_batches = len(eval_loader)
     
