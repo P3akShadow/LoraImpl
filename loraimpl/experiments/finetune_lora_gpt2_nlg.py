@@ -2,7 +2,7 @@ import torch
 import transformers
 from datasets import load_dataset
 from tqdm import tqdm
-from transformers import GPT2TokenizerFast
+from transformers import GPT2TokenizerFast, get_linear_schedule_with_warmup
 import sys
 import wandb
 
@@ -60,8 +60,11 @@ def main():
         wandb_kwargs['id'] = sys.argv[1]
         wandb_kwargs['resume'] = 'must'
         print(f'Trying to resume run {sys.argv[1]}...')
+    if wandb_kwargs.get('id', '') == '--no-wandb':
+        run_experiment(**config)
+        return
     with wandb.init(**wandb_kwargs) as run:  # Log configuration to Weights & Biases and run experiment
-        run_experiment(**config, run=run, cont=run.resumed)
+        run_experiment(**config, run=run)
 
 def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg, tokenizer_cfg, inference_cfg, seed=None, run=None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -79,16 +82,20 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
         run.restore('checkpoint/generation_config.json', replace=True)
         run.restore('checkpoint/model.safetensors', replace=True)
         run.restore('checkpoint/optimizer.pt', replace=True)
+        run.restore('checkpoint/scheduler.pt', replace=True)
         print('Loading model from checkpoint...')
         model = model_cls.from_pretrained("checkpoint", local_files_only=True, **model_cfg['kwargs'])
         model.to(device)
         optimizer = torch.optim.AdamW(model.parameters(), **optimizer_cfg)
         optimizer.load_state_dict(torch.load("checkpoint/optimizer.pt", map_location=device, weights_only=False))
+        scheduler = get_linear_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=500)
+        scheduler.load_state_dict(torch.load("checkpoint/scheduler.pt", map_location=device), weights_only=False)
         start_epoch = run.summary['epoch']
     else:  # Initialize model with LoRA only training (no biases or layer norms)
         model = model_cls.from_pretrained(model_cfg['name'], **model_cfg['kwargs'])
         model.to(device)
         optimizer = torch.optim.AdamW(model.parameters(), **optimizer_cfg)
+        scheduler = get_linear_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=500)
         start_epoch = 0
 
 
@@ -103,7 +110,7 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
 
     summarize_model(model, dataloader=train_loader, device=device)
 
-    if not cont and run is not None:
+    if run is not None and not run.resumed:
         print('\nEvaluating before training...')
         metrics = evaluate_nlg(model, val_loader, tokenizer, device, inference_cfg)
         wandb.log({
@@ -118,7 +125,7 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
         total_loss = 0
 
         for batch_idx, batch in enumerate(tqdm(train_loader, desc=f'Epoch {epoch + 1}')):
-            batch = {k: v.to(device) for k, v in batch.items()}
+            batch = {k: v.to(device) for k, v in batch.items()}  # noqa
 
             # Normal training step
             outputs = model(**batch)
@@ -127,6 +134,7 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            scheduler.step()
 
             total_loss += loss.item()
 
@@ -142,6 +150,7 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
 
         model.save_pretrained('checkpoint')
         torch.save(optimizer.state_dict(), 'checkpoint/optimizer.pt')
+        torch.save(scheduler.state_dict(), 'checkpoint/scheduler.pt')
 
         if run is not None:
             run.log({
