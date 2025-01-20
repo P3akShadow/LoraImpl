@@ -43,6 +43,11 @@ def main():
             'truncation': True,
             'return_tensors': 'pt'
         },
+        'inference_cfg': {
+            'num_beams': 10,
+            'no_repeat_ngram_size': 4,
+            'length_penalty': 0.9,
+        },
         'seed': 42
     }
 
@@ -58,7 +63,7 @@ def main():
     with wandb.init(**wandb_kwargs) as run:  # Log configuration to Weights & Biases and run experiment
         run_experiment(**config, run=run, cont=run.resumed)
 
-def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg, tokenizer_cfg, seed=None, run=None, cont=False):
+def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg, tokenizer_cfg, inference_cfg, seed=None, run=None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model_cls = gpt2_modifications[model_cfg['modification']]  # GPT2LMHeadModelLora, GPT2LMHeadModelFinetuning or GPT2LMHeadModel (original)
 
@@ -68,13 +73,12 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(42)
 
-    if cont:  # Load model from checkpoint
-        if run is not None:
-            print('Restoring checkpoint...')
-            run.restore('checkpoint/config.json', replace=True)
-            run.restore('checkpoint/generation_config.json', replace=True)
-            run.restore('checkpoint/model.safetensors', replace=True)
-            run.restore('checkpoint/optimizer.pt', replace=True)
+    if run is not None and run.resumed:  # Load model from checkpoint
+        print('Restoring checkpoint...')
+        run.restore('checkpoint/config.json', replace=True)
+        run.restore('checkpoint/generation_config.json', replace=True)
+        run.restore('checkpoint/model.safetensors', replace=True)
+        run.restore('checkpoint/optimizer.pt', replace=True)
         print('Loading model from checkpoint...')
         model = model_cls.from_pretrained("checkpoint", local_files_only=True, **model_cfg['kwargs'])
         model.to(device)
@@ -101,7 +105,7 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
 
     if not cont and run is not None:
         print('\nEvaluating before training...')
-        metrics = evaluate_nlg(model, val_loader, tokenizer, device)
+        metrics = evaluate_nlg(model, val_loader, tokenizer, device, inference_cfg)
         wandb.log({
             'epoch': 0,
             'validation_metrics': metrics
@@ -130,7 +134,7 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
         print(f'\nEpoch {epoch + 1} average loss: {avg_loss:.4f}')
 
         print('\nEvaluating...')
-        metrics = evaluate_nlg(model, val_loader, tokenizer, device)
+        metrics = evaluate_nlg(model, val_loader, tokenizer, device, inference_cfg)
 
         print('\nValidation metrics:')
         for k, v in metrics.items():
