@@ -7,7 +7,7 @@ import sys
 import wandb
 
 from loraimpl.data.nlg import CollateFunction
-from loraimpl.models.lora_gpt2 import GPT2LMHeadModelLora
+from loraimpl.models import gpt2_modifications
 from loraimpl.utils.helper import evaluate_nlg, summarize_model
 
 
@@ -17,6 +17,7 @@ def main():
         'num_epochs': 10,
         'model_cfg': {
             'name': 'gpt2',
+            'modification': 'lora',  # lora, adapter or none
             'kwargs': {  # LoRA hyperparameters from the paper
                 'lora_rank': 4,
                 'lora_alpha': 32,
@@ -59,6 +60,7 @@ def main():
 
 def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg, tokenizer_cfg, seed=None, run=None, cont=False):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model_cls = gpt2_modifications[model_cfg['modification']]  # GPT2LMHeadModelLora, GPT2LMHeadModelFinetuning or GPT2LMHeadModel (original)
 
     if seed is not None:
         transformers.enable_full_determinism(seed=seed, warn_only=True)
@@ -74,13 +76,13 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
             run.restore('checkpoint/model.safetensors', replace=True)
             run.restore('checkpoint/optimizer.pt', replace=True)
         print('Loading model from checkpoint...')
-        model = GPT2LMHeadModelLora.from_pretrained("checkpoint", local_files_only=True, **model_cfg['kwargs'])
+        model = model_cls.from_pretrained("checkpoint", local_files_only=True, **model_cfg['kwargs'])
         model.to(device)
         optimizer = torch.optim.AdamW(model.parameters(), **optimizer_cfg)
         optimizer.load_state_dict(torch.load("checkpoint/optimizer.pt", map_location=device, weights_only=False))
         start_epoch = run.summary['epoch']
     else:  # Initialize model with LoRA only training (no biases or layer norms)
-        model = GPT2LMHeadModelLora.from_pretrained(model_cfg['name'], **model_cfg['kwargs'])
+        model = model_cls.from_pretrained(model_cfg['name'], **model_cfg['kwargs'])
         model.to(device)
         optimizer = torch.optim.AdamW(model.parameters(), **optimizer_cfg)
         start_epoch = 0

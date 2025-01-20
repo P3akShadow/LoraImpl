@@ -171,7 +171,7 @@ def compute_cider(predictions, references):
     
     return sum(w * s for w, s in zip(weights, scores))
 
-def evaluate_nlg(model, eval_loader, tokenizer, device):
+def evaluate_nlg(model, eval_loader, tokenizer, device, inference_cfg):
     model.eval()
     bleu = evaluate.load('bleu')
     rouge = evaluate.load('rouge')
@@ -185,7 +185,7 @@ def evaluate_nlg(model, eval_loader, tokenizer, device):
         batch = {k: v.to(device) for k, v in batch.items()}
         batch_metrics = dict()
         
-        outputs = model.generate(**batch, pad_token_id=tokenizer.eos_token_id)
+        outputs = model.generate(**batch, pad_token_id=tokenizer.eos_token_id, **inference_cfg)
         outputs = outputs[:, batch['input_ids'].shape[1]:]
         predictions = tokenizer.batch_decode(outputs, skip_special_tokens=True)
         
