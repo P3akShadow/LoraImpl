@@ -88,14 +88,11 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
         model.to(device)
         optimizer = torch.optim.AdamW(model.parameters(), **optimizer_cfg)
         optimizer.load_state_dict(torch.load("checkpoint/optimizer.pt", map_location=device, weights_only=False))
-        scheduler = get_linear_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=500)
-        scheduler.load_state_dict(torch.load("checkpoint/scheduler.pt", map_location=device), weights_only=False)
         start_epoch = run.summary['epoch']
     else:  # Initialize model with LoRA only training (no biases or layer norms)
         model = model_cls.from_pretrained(model_cfg['name'], **model_cfg['kwargs'])
         model.to(device)
         optimizer = torch.optim.AdamW(model.parameters(), **optimizer_cfg)
-        scheduler = get_linear_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=500)
         start_epoch = 0
 
 
@@ -107,6 +104,10 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
     val_dataset = load_dataset(dataset_cfg['name'], split='validation')
     train_loader = torch.utils.data.DataLoader(train_dataset, collate_fn=collate_fn, shuffle=True, **loader_cfg)
     val_loader = torch.utils.data.DataLoader(val_dataset, collate_fn=collate_fn.validation, shuffle=False, **loader_cfg)
+
+    scheduler = get_linear_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=500, num_training_steps=(num_epochs - start_epoch) * len(train_loader))
+    if run is not None and run.resumed:
+        scheduler.load_state_dict(torch.load("checkpoint/scheduler.pt", map_location=device), weights_only=False)
 
     summarize_model(model, dataloader=train_loader, device=device)
 

@@ -1,5 +1,5 @@
-from lora_gpt2 import GPT2LMHeadModelLora
-from bareFinetuning_gpt2 import GPT2LMHeadModelFinetuning
+from loraimpl.models.lora_gpt2 import GPT2LMHeadModelLora
+from loraimpl.models.bareFinetuning_gpt2 import GPT2LMHeadModelFinetuning
 from transformers import GPT2LMHeadModel
 
 gpt2_modifications = {
