@@ -11,7 +11,7 @@ import random as rnd
 
 def main():
     # Configuration
-    num_epochs = 1
+    num_epochs = 20
     model_name = 'roberta-base'
     model_config = {
         'task_type': 'glue',
@@ -64,8 +64,8 @@ def main():
     }
 
     #run experiments in loop
-    for lora_rank in [1,2,4,8,16]:
-        for task in ["stsb", "cola", "sst2"]:
+    for task in ["stsb", "cola", "sst2"]:
+        for lora_rank in [1,2,4,8,16]:
             config["model_config"]["lora_rank"] = lora_rank
             config["train_dataset_config"]["task_name"] = task
             config["val_dataset_config"]["task_name"] = task
@@ -75,9 +75,9 @@ def main():
             run_experiment(**config)
             wandb.finish()
 
-    
-    wandb.init(project="lora", config=config)
-    run_experiment(**config)
+
+    #wandb.init(project="lora", config=config)
+    #run_experiment(**config)
 
 
 
