@@ -7,8 +7,8 @@ class NLGDataset(Dataset):
     Simple dataset for E2E NLG,
     with a tokenization approach that partially masks the 'input' portion.
     """
-    def __init__(self, split='train', max_length=128):
-        self.data = load_dataset('GEM/e2e_nlg', trust_remote_code=True)
+    def __init__(self, split='train', max_length=128, name='GEM/e2e_nlg'):
+        self.data = load_dataset(name, trust_remote_code=True)
         self.data = self.data[split]
         self.tokenizer = GPT2TokenizerFast.from_pretrained('gpt2')
 

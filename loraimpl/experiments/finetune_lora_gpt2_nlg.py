@@ -38,14 +38,15 @@ def main():
         'tokenizer_cfg': {
             'padding_side': 'left',
         },
-        'seed': 42
+        'seed': 42,
+        'notes': "original lora gpt2 code"
     }
 
     # Log configuration to Weights & Biases and run experiment
     wandb.init(project="lora", config=config)
     run_experiment(**config)
 
-def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg, tokenizer_cfg, seed=None):
+def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg, seed=None, **kwargs):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     print(f"Using device: {device}")
