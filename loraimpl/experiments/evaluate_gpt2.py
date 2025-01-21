@@ -14,6 +14,7 @@ def main(name='lora', rank=4, alpha=32):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model_cls = gpt2_modifications[name]
     model = model_cls.from_pretrained("checkpoint", local_files_only=True, lora_rank=rank, lora_alpha=alpha)
+    model.to(device)
     tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
     collate_fn = CollateFunction(tokenizer, split='test')
     dataset = load_dataset("GEM/e2e_nlg", split='test')
