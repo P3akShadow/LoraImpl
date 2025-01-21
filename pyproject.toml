@@ -18,6 +18,7 @@ rouge-score = "^0.1.2"
 wandb = "^0.19.1"
 torchinfo = "^1.8.0"
 pycocoevalcap = "^1.2"
+numpy = "^2.2.2"
 
 
 [build-system]

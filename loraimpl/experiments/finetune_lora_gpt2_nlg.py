@@ -39,7 +39,7 @@ def main():
         },
         'tokenizer_cfg': {
             'padding': True,
-            'padding_side': 'left',
+            'padding_side': 'right',
             'truncation': True,
             'return_tensors': 'pt'
         },

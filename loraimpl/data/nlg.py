@@ -1,6 +1,8 @@
 from torch.utils.data import Dataset
 from datasets import load_dataset
 from transformers import GPT2TokenizerFast
+from yaml import full_load
+
 
 class NLGDataset(Dataset):
     """
@@ -65,10 +67,11 @@ class NLGDataset(Dataset):
 
 
 class CollateFunction:
-    def __init__(self, tokenizer, split='train'):
+    def __init__(self, tokenizer, split='train', label_mask_id=-100):
         self.tokenizer = tokenizer
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.split = split
+        self.label_mask_id = label_mask_id
 
     def __call__(self, batch):
         if self.split == 'train':
@@ -79,21 +82,24 @@ class CollateFunction:
             raise ValueError(f"Invalid split: {self.split}")
 
     def train(self, batch):
-        text = [entry['meaning_representation'] + entry['target'] for entry in batch]
-        prompt = [entry['meaning_representation'] for entry in batch]
+        full_text = [entry['meaning_representation'] + entry['target'] for entry in batch]
+        input_text = [entry['meaning_representation'] for entry in batch]
 
         # Tokenize inputs and targets
         inputs_encoded = self.tokenizer(
-            text=text,
-            text_target=text,  # causal language modeling -> labels will be shifted internally
+            text=full_text,
+            text_target=full_text,  # causal language modeling -> labels will be shifted internally
             return_tensors='pt',
             padding=True,
             truncation=True,
         )
         # Mask labels of input portion
-        mask_length = [len(self.tokenizer.tokenize(entry)) for entry in prompt]
-        for i, length in enumerate(mask_length):
-            inputs_encoded['labels'][i, :length] = -100
+        input_length = [len(self.tokenizer.tokenize(entry)) for entry in input_text]
+        for i, length in enumerate(input_length):
+            inputs_encoded['labels'][i, :length] = self.label_mask_id
+        # Mask labels with attention mask (set to -100, where attention mask is 0)
+        inputs_encoded['labels'] = inputs_encoded['labels'].where(inputs_encoded['attention_mask'] == 1, self.label_mask_id)
+
 
         return inputs_encoded
 
@@ -115,6 +121,14 @@ class CollateFunction:
 
 # debugging and testing
 if __name__ == '__main__':
-    ds = load_dataset('GEM/e2e_nlg', split='validation')
-    for i in range(5):
-        print(ds[i])
+    import torch
+    s = 'train'
+    ds1 = load_dataset('GEM/e2e_nlg', split=s)
+    ds2 = NLGDataset("gpt2", split=s)
+    cfn = CollateFunction(GPT2TokenizerFast.from_pretrained("gpt2"))
+    dl1 = torch.utils.data.DataLoader(ds1, batch_size=5, collate_fn=cfn)
+    dl2 = torch.utils.data.DataLoader(ds2, batch_size=5)
+    for b1, b2 in zip(dl1, dl2):
+        print(b1)
+        print(b2)
+
