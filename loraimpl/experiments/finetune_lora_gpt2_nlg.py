@@ -103,7 +103,11 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
     train_dataset = load_dataset(dataset_cfg['name'], split='train')
     val_dataset = load_dataset(dataset_cfg['name'], split='validation')
     train_loader = torch.utils.data.DataLoader(train_dataset, collate_fn=collate_fn, shuffle=True, **loader_cfg)
-    val_loader = torch.utils.data.DataLoader(val_dataset, collate_fn=collate_fn.validation, shuffle=False, **loader_cfg)
+    val_loader = torch.utils.data.DataLoader(val_dataset, collate_fn=collate_fn.validation, shuffle=False, **(loader_cfg | {'batch_size': 1}))
+    # TODO: Note: huggingface warns if padding is not left for generating,
+    #   but that confuses the model with batch evaluation...
+    #   Also the model documentation says it should be right because of absolute position embeddings.
+    #   We'll keep batch size 1 for evaluating, which is less efficient but shouldn't use padding at all.
 
     scheduler = get_linear_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=500, num_training_steps=(num_epochs - start_epoch) * len(train_loader))
     if run is not None and run.resumed:
@@ -111,9 +115,9 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
 
     summarize_model(model, dataloader=train_loader, device=device)
 
+    metrics = evaluate_nlg(model, val_loader, tokenizer, device, inference_cfg)
     if run is not None and not run.resumed:
         print('\nEvaluating before training...')
-        metrics = evaluate_nlg(model, val_loader, tokenizer, device, inference_cfg)
         wandb.log({
             'epoch': 0,
             'validation_metrics': metrics
