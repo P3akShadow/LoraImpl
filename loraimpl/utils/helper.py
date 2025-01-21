@@ -126,7 +126,7 @@ def evaluate_nlg(model, eval_loader, tokenizer, device, inference_cfg):
                 metrics[key] = value / n_batches
             else:
                 metrics[key] += value / n_batches
-        pbar.set_description(f'Evaluating: {metrics['bleu']:0.4f} BLEU')
+        pbar.set_description(f'Evaluating: {metrics["bleu"]:0.4f} BLEU')
     
     return metrics
     
