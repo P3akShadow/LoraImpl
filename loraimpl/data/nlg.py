@@ -76,10 +76,8 @@ class CollateFunction:
     def __call__(self, batch):
         if self.split == 'train':
             return self.train(batch)
-        elif self.split == 'validation':
-            return self.train(batch)
         else:
-            raise ValueError(f"Invalid split: {self.split}")
+            return self.validation(batch)
 
     def train(self, batch):
         full_text = [entry['meaning_representation'] + entry['target'] for entry in batch]

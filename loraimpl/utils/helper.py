@@ -105,7 +105,7 @@ def evaluate_nlg(model, eval_loader, tokenizer, device, inference_cfg):
     metrics = dict()
     n_batches = len(eval_loader)
     
-    for batch, references in tqdm(eval_loader, desc='Evaluating'):
+    for batch, references in (pbar := tqdm(eval_loader, desc='Evaluating')):
         batch = {k: v.to(device) for k, v in batch.items()}
         batch_metrics = dict()
         
@@ -126,6 +126,7 @@ def evaluate_nlg(model, eval_loader, tokenizer, device, inference_cfg):
                 metrics[key] = value / n_batches
             else:
                 metrics[key] += value / n_batches
+        pbar.set_description(f'Evaluating: {metrics['bleu']:0.4f} BLEU')
     
     return metrics
     
