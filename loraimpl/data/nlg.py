@@ -77,7 +77,7 @@ class CollateFunction:
         if self.split == 'train':
             return self.train(batch)
         else:
-            return self.validation(batch)
+            return self.evaluation(batch)
 
     def train(self, batch):
         full_text = [entry['meaning_representation'] + entry['target'] for entry in batch]
@@ -101,7 +101,7 @@ class CollateFunction:
 
         return inputs_encoded
 
-    def validation(self, batch):
+    def evaluation(self, batch):
         inputs = [entry['meaning_representation'] for entry in batch]
         targets = [entry['target'] for entry in batch]
 

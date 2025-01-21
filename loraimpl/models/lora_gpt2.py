@@ -78,7 +78,7 @@ if __name__ == "__main__":
 
     train_dataset = load_dataset('GEM/e2e_nlg', split='validation')
     collate_fn = CollateFunction(tokenizer)
-    data_loader = torch.utils.data.DataLoader(train_dataset, collate_fn=collate_fn.validation, batch_size=2)
+    data_loader = torch.utils.data.DataLoader(train_dataset, collate_fn=collate_fn.evaluation, batch_size=2)
 
     model.eval()
     test_input, _ = next(iter(data_loader))

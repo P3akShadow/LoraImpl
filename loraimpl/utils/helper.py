@@ -159,7 +159,7 @@ if __name__ == '__main__':
 
     ds = load_dataset('GEM/e2e_nlg', split='validation')
     cf = CollateFunction(t, torch.device('cpu'))
-    dl = torch.utils.data.DataLoader(ds, collate_fn=cf.validation, batch_size=2)
+    dl = torch.utils.data.DataLoader(ds, collate_fn=cf.evaluation, batch_size=2)
 
 
     mtr = evaluate_nlg(m, dl, t, torch.device('cpu'))
