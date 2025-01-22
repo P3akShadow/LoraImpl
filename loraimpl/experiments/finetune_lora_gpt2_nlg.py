@@ -47,7 +47,7 @@ def main():
             'num_beams': 10,
             'no_repeat_ngram_size': 4,
             'length_penalty': 0.9,
-            'max_length': 500,
+            'max_length': 300,
             'early_stopping': True,
         },
         'seed': 42
