@@ -105,7 +105,7 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
     train_dataset = load_dataset(dataset_cfg['name'], split='train')
     val_dataset = load_dataset(dataset_cfg['name'], split='test')
     train_loader = torch.utils.data.DataLoader(train_dataset, collate_fn=collate_fn, shuffle=True, **loader_cfg)
-    val_loader = torch.utils.data.DataLoader(val_dataset, collate_fn=collate_fn.evaluation, shuffle=False, **(loader_cfg | {'batch_size': 1}))
+    val_loader = torch.utils.data.DataLoader(val_dataset, collate_fn=collate_fn.evaluation, shuffle=False, **loader_cfg)
     # TODO: Note: huggingface warns if padding is not left for generating,
     #   but that confuses the model with batch evaluation...
     #   Also the model documentation says it should be right because of absolute position embeddings.

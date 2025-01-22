@@ -110,7 +110,10 @@ class CollateFunction:
             return_tensors='pt',
             padding=True,
             truncation=True,
+            padding_side='left',
         )
+        # get the absolute position_ids
+        inputs_encoded['position_ids'] = (inputs_encoded['attention_mask'].cumsum(dim=1) - 1).clamp(min=0)
         references = [entry['references'] for entry in batch if 'references' in entry]
         return inputs_encoded, references
 

@@ -24,7 +24,7 @@ def main(name='lora', rank=4, alpha=32):
     tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
     collate_fn = CollateFunction(tokenizer, split='test')
     dataset = load_dataset("GEM/e2e_nlg", split='test')
-    data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, collate_fn=collate_fn, shuffle=True)
+    data_loader = torch.utils.data.DataLoader(dataset, batch_size=5, collate_fn=collate_fn, shuffle=True)
     evaluate_nlg(model, data_loader, tokenizer, device=device, inference_cfg=inference_config)
 
 
