@@ -95,8 +95,6 @@ class CollateFunction:
         input_length = [len(self.tokenizer.tokenize(entry)) for entry in input_text]
         for i, length in enumerate(input_length):
             inputs_encoded['labels'][i, :length] = self.label_mask_id
-        # Mask labels with attention mask (set to -100, where attention mask is 0)
-        inputs_encoded['labels'] = inputs_encoded['labels'].where(inputs_encoded['attention_mask'] == 1, self.label_mask_id)
 
 
         return inputs_encoded
