@@ -11,7 +11,7 @@ from loraimpl.models import gpt2_modifications
 from loraimpl.utils.helper import evaluate_nlg, summarize_model
 
 
-def main():
+def main(lora_rank=4):
     # Configuration
     config = {
         'num_epochs': 10,
@@ -19,7 +19,7 @@ def main():
             'name': 'gpt2',
             'modification': 'lora',  # lora, adapter or none
             'kwargs': {  # LoRA hyperparameters from the paper
-                'lora_rank': 4,
+                'lora_rank': lora_rank,
                 'lora_alpha': 32,
             }
         },
@@ -171,4 +171,5 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
 
 
 if __name__ == '__main__':
-    main()
+    for r in [16, 8, 4, 2, 1]:
+        main(lora_rank=r)
