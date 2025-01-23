@@ -11,7 +11,7 @@ import random as rnd
 
 def main():    
     # Configuration
-    num_epochs = 1
+    num_epochs = 20
     model_name = 'roberta-base'
     model_config = {
         'task_type': 'glue',
