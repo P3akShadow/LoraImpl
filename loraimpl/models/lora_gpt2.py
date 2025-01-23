@@ -1,3 +1,5 @@
+import math
+
 import torch
 import torch.nn as nn
 from transformers import GPT2LMHeadModel, Conv1D
@@ -47,9 +49,11 @@ class Conv1DLora(Conv1D):
         self.lora_rank = lora_rank
         self.lora_alpha = lora_alpha
         self.scaling = self.lora_alpha / self.lora_rank
-        # initialize A random and B to zeros
-        self.lora_a = nn.Parameter(torch.rand(nf, lora_rank))
-        self.lora_b = nn.Parameter(torch.zeros(lora_rank, nx))
+        # initialize A randomly and B to zeros as in the paper
+        self.lora_a = nn.Parameter(self.weight.new_zeros(nf, lora_rank))
+        self.lora_b = nn.Parameter(self.weight.new_zeros(lora_rank, nx))
+        nn.init.kaiming_uniform_(self.lora_a, a=math.sqrt(5))
+        nn.init.zeros_(self.lora_b)
 
     def __repr__(self) -> str:
         return f"Conv1DLora (nf={self.nf}, nx={self.nx}, rank={self.lora_rank}, alpha={self.lora_alpha})"
@@ -68,7 +72,7 @@ if __name__ == "__main__":
     from transformers import GPT2TokenizerFast
     from datasets import load_dataset
 
-    model = GPT2LMHeadModelLora.from_pretrained("gpt2")
+    model = GPT2LMHeadModelLora.from_pretrained("gpt2", _fast_init=False)
 
     tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
     tokenizer.padding_side = "left"

@@ -1,7 +1,6 @@
 """Load and evaluate a local GPT2 model on a dataset."""
 import torch
 from datasets import load_dataset
-from torch.xpu import device
 from transformers import GPT2TokenizerFast
 
 from loraimpl.data.nlg import CollateFunction
