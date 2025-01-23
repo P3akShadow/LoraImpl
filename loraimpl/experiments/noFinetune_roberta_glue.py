@@ -67,7 +67,7 @@ def main():
         config["train_dataset_config"]["task_name"] = task
         config["val_dataset_config"]["task_name"] = task
 
-        wandb_name = f"finetune_bare_roberta__{task}_{rnd.randrange(1000)}"
+        wandb_name = f"nofinetune_roberta__{task}_{rnd.randrange(1000)}"
         wandb.init(project="lora", config=config, name=wandb_name)
         run_experiment(**config)
         wandb.finish()
