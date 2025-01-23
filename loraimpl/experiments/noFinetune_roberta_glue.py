@@ -7,10 +7,11 @@ from loraimpl.data.glue import GLUEDataset
 from loraimpl.models.noFinetuning_roberta import WrapperRoberta
 from loraimpl.utils.helper import train_epoch, evaluate_glue, summarize_model
 
+import random as rnd
 
 def main():    
     # Configuration
-    num_epochs = 10
+    num_epochs = 1
     model_name = 'roberta-base'
     model_config = {
         'task_type': 'glue',
@@ -60,8 +61,18 @@ def main():
         'optimizer_config': optimizer_config,
         'seed': seed,
     }
-    wandb.init(project="lora", config=config)
-    run_experiment(**config)
+
+    #run experiments in loop
+    for task in ["stsb", "cola", "sst2"]:
+        config["train_dataset_config"]["task_name"] = task
+        config["val_dataset_config"]["task_name"] = task
+
+        wandb_name = f"finetune_bare_roberta__{task}_{rnd.randrange(1000)}"
+        wandb.init(project="lora", config=config, name=wandb_name)
+        run_experiment(**config)
+        wandb.finish()
+    #wandb.init(project="lora", config=config)
+    #run_experiment(**config)
 
 
 def run_experiment(model_name, model_config, train_loader_config, val_loader_config, train_dataset_config, val_dataset_config, num_epochs, optimizer_config, seed=None, **kwargs):
@@ -110,7 +121,13 @@ def run_experiment(model_name, model_config, train_loader_config, val_loader_con
             print(f"{k}: {v:.4f}")
 
         # Save best model
-        current_metric = eval_metrics['accuracy'] if 'accuracy' in eval_metrics else eval_metrics['mcc']
+        current_metric = {}
+        if 'accuracy' in eval_metrics:
+            current_metric = eval_metrics['accuracy']
+        elif 'mcc' in eval_metrics:
+            current_metric = eval_metrics['mcc']
+        elif 'pearson' in eval_metrics:
+            current_metric = eval_metrics['pearson']
         if current_metric > best_metric:
             best_metric = current_metric
             model.save_state_dict(f'lora_weights_{task_name}_best.pt')
