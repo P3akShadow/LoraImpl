@@ -92,7 +92,7 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
         optimizer.load_state_dict(torch.load("checkpoint/optimizer.pt", map_location=device, weights_only=False))
         start_epoch = run.summary['epoch']
     else:  # Initialize model with LoRA only training (no biases or layer norms)
-        model = model_cls.from_pretrained(model_cfg['name'], **model_cfg['kwargs'])
+        model = model_cls.from_pretrained(model_cfg['name'], **model_cfg['kwargs'], _fast_init=False)
         model.to(device)
         optimizer = torch.optim.AdamW(model.parameters(), **optimizer_cfg)
         start_epoch = 0
