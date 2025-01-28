@@ -12,9 +12,10 @@ import random as rnd
 def main():    
     # Configuration
     num_epochs = 20
-    model_name = 'roberta-base'
+    model_name = 'roberta-large'
     model_config = {
         'task_type': 'glue',
+        'model_id': 'roberta-large',
         'train_biases': True,
         'train_embedding': False,
         'train_layer_norms': True

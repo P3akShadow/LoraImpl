@@ -15,6 +15,7 @@ def main():
     model_name = 'roberta-base'
     model_config = {
         'task_type': 'glue',
+        'model_id': 'roberta-large',
         'lora_rank': 8,
         'train_biases': True,
         'train_embedding': False,

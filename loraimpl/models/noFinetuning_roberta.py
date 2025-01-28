@@ -48,6 +48,9 @@ class WrapperRoberta(nn.Module):
         """
         super().__init__()
 
+        print(f"building model based on {model_id}")
+
+
         supported_task_types = ['glue', 'squad', 'squad_v1', 'squad_v2']
         assert isinstance(task_type,
                           str) and task_type.lower() in supported_task_types, f"task_type has to be one of {supported_task_types}"
