@@ -27,13 +27,16 @@ def decompose_svg(matrix, comp_rank=32):
     B = B_truncated  # Shape: (rank, n)
     return A, B
 
-def decomp_chart(matrix):
+def decomp_chart(matrix, iteration="unspec"):
     A, S, B = np.linalg.svd(matrix)
 
     eigenvalues = list(S)
 
+    plt.title("Eienvalue Sizes")
+    plt.xlabel("eingenvalue number")
+    plt.ylabel("eingenvalue")
     plt.plot(range(len(S)), eigenvalues)
-    plt.savefig("../charts/eignenvalues_example.png")
+    plt.savefig(f"../charts/eignenvalues_example_{iteration}.png")
     plt.close()
 
     compressed_ranks = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
@@ -50,14 +53,17 @@ def decomp_chart(matrix):
         compressed_distances.append(distance)
         print(f"rank: {comp_rank}; distance: {distance}")
 
+    plt.title("Matrix difference")
+    plt.xlabel("compression rank")
+    plt.ylabel("difference")
     plt.plot(compressed_ranks, compressed_distances)
-    plt.savefig("../charts/compressed_distances.png")
+    plt.savefig(f"../charts/compressed_distances_{iteration}.png")
     plt.close()
         
 
 def main():    
     # Configuration
-    num_epochs = 1
+    num_epochs = 20
     model_name = 'roberta-base'
     model_config = {
         'task_type': 'glue',
@@ -108,8 +114,8 @@ def main():
         'seed': seed,
     }
 
-    config["train_dataset_config"]["task_name"] = "cola"
-    config["val_dataset_config"]["task_name"] = "cola"
+    #config["train_dataset_config"]["task_name"] = "cola"
+    #config["val_dataset_config"]["task_name"] = "cola"
     
     wandb.init(project="lora", config=config)
     run_experiment(**config)
@@ -248,6 +254,12 @@ def run_experiment(model_name, model_config, train_loader_config, val_loader_con
             'loss': train_metrics['loss'],
             'validation_metrics': eval_metrics,
         })
+        for name, param in model.model.named_parameters():
+            if "ft_" in name:
+                print("making charts")
+                matrix = param.cpu().detach().numpy()
+                decomp_chart(matrix, epoch)
+                break
 
 
 
@@ -256,12 +268,7 @@ def run_experiment(model_name, model_config, train_loader_config, val_loader_con
     print(f"Best validation metric: {best_metric:.4f}")
 
     
-    for name, param in model.model.named_parameters():
-        if "ft_" in name:
-            print("making charts")
-            matrix = param.cpu().detach().numpy()
-            decomp_chart(matrix)
-            break
+
 
     
     print("replacing full layers with lora")
