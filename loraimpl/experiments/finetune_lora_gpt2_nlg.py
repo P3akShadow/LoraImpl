@@ -14,13 +14,13 @@ from loraimpl.utils.helper import evaluate_nlg, summarize_model
 def main(lora_rank=4):
     # Configuration
     config = {
-        'num_epochs': 10,
+        'num_epochs': 5,
         'model_cfg': {
-            'name': 'gpt2',
+            'name': 'gpt2-large',
             'modification': 'lora',  # lora, adapter or none
             'kwargs': {  # LoRA hyperparameters from the paper
                 'lora_rank': lora_rank,
-                'lora_alpha': 32,
+                'lora_alpha': lora_rank,
             }
         },
         'dataset_cfg': {
@@ -117,14 +117,6 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
 
     summarize_model(model, dataloader=train_loader, device=device)
 
-    metrics = evaluate_nlg(model, val_loader, tokenizer, device, inference_cfg)
-    if run is not None and not run.resumed:
-        print('\nEvaluating before training...')
-        wandb.log({
-            'epoch': 0,
-            'validation_metrics': metrics
-        })
-
     print(f'\nTraining for {num_epochs} epochs...')
 
     for epoch in range(start_epoch, num_epochs):
@@ -171,5 +163,5 @@ def run_experiment(num_epochs, model_cfg, dataset_cfg, loader_cfg, optimizer_cfg
 
 
 if __name__ == '__main__':
-    for r in [16, 8, 4, 2, 1]:
+    for r in [2, 1]:
         main(lora_rank=r)
